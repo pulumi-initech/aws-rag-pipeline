@@ -1,0 +1,7 @@
+config:
+  aws:region: us-west-2
+  aws-rag-pipeline:vectorStore: opensearch
+  pinecode:APIKey:
+    secure: AAABAJyLii9HgwG2lnX/49TmmSgh0wBPt2tqWozOIAmHuOx0bvcB10eHQGpbvHXGmwWWP3rkacgWzHIp01kViJ+5UK+Yk5/UxtGQRrFlnt2BFpBmEs7OfOy5+0hVDNXQY4oFGrj+qreghNI=
+environment:
+  - shared/aws-dev

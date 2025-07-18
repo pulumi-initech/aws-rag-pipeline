@@ -1,0 +1,15 @@
+Amazon Web Services (AWS) is a comprehensive cloud computing platform that provides over 200 fully featured services from data centers globally. AWS offers compute power, database storage, content delivery, and other functionality to help businesses scale and grow.
+
+Key AWS services include:
+
+1. Amazon EC2 (Elastic Compute Cloud) - Virtual servers in the cloud that provide resizable compute capacity
+2. Amazon S3 (Simple Storage Service) - Object storage service offering scalability, data availability, security, and performance
+3. Amazon RDS (Relational Database Service) - Managed relational database service supporting multiple database engines
+4. AWS Lambda - Serverless compute service that runs code in response to events without provisioning servers
+5. Amazon VPC (Virtual Private Cloud) - Logically isolated section of the AWS cloud for launching resources
+
+AWS follows a pay-as-you-use pricing model where customers only pay for the individual services they use, for as long as they use them. This eliminates the need for large upfront investments in hardware and reduces the time to market for applications.
+
+The AWS global infrastructure spans multiple geographic regions, with each region containing multiple Availability Zones. This design provides high availability, fault tolerance, and scalability for applications deployed on AWS.
+
+AWS also provides extensive security features including encryption, access management, and compliance certifications to help customers meet their security and regulatory requirements.

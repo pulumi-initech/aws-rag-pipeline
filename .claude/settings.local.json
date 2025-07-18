@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__pulumi__pulumi-cli-preview",
+      "Bash(esc run:*)"
+    ],
+    "deny": []
+  }
+}

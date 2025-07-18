@@ -1,0 +1,10 @@
+name: aws-rag-pipeline
+description: A simple Retreival Augmented Generation (RAG) pipeline on AWS
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: aws-typescript
