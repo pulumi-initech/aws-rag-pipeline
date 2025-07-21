@@ -1,6 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import { VectorStoreConfig } from "./VectorStore";
+import { VectorStoreConfig } from "./VectorStore.ts";
 
 export interface QueryArgs {
     vectorStoreConfig: VectorStoreConfig;
@@ -11,6 +11,7 @@ export interface QueryArgs {
 export class Query extends pulumi.ComponentResource {
     public readonly role: aws.iam.Role;
     public readonly lambda: aws.lambda.Function;
+    public readonly lambdaArn: pulumi.Output<string>;
     public readonly api: aws.apigatewayv2.Api;
     public readonly apiEndpoint: pulumi.Output<string>;
 
@@ -23,50 +24,38 @@ export class Query extends pulumi.ComponentResource {
 
         // Create IAM role with combined policies
         this.role = new aws.iam.Role(`query-lambda-role`, {
-            name: "query-lambda-role",
             assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({ Service: "lambda.amazonaws.com" }),
         }, { parent: this });
+
+        const policyDoc = {
+            Version: "2012-10-17",
+            Statement: [{
+                Effect: "Allow",
+                Action: [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                ],
+                Resource: "arn:aws:logs:*:*:*"
+            }, {
+                Effect: "Allow",
+                Action: "bedrock:InvokeModel",
+                Resource: "*"
+            }]
+        };
+
+        if ( args.vectorStoreConfig.type === "opensearch" ) {
+            policyDoc.Statement.push({
+                Effect: "Allow",
+                Action: "aoss:APIAccessAll",
+                Resource: "*"
+            });
+        }
 
         // Combined policy for query Lambda
         const combinedPolicy = new aws.iam.RolePolicy(`query-lambda-policy`, {
             role: this.role.name,
-            policy: args.vectorStoreConfig.type === "opensearch" 
-                ? JSON.stringify({
-                    Version: "2012-10-17",
-                    Statement: [{
-                        Effect: "Allow",
-                        Action: [
-                            "logs:CreateLogGroup",
-                            "logs:CreateLogStream",
-                            "logs:PutLogEvents"
-                        ],
-                        Resource: "arn:aws:logs:*:*:*"
-                    }, {
-                        Effect: "Allow",
-                        Action: "bedrock:InvokeModel",
-                        Resource: "*"
-                    }, {
-                        Effect: "Allow",
-                        Action: "aoss:APIAccessAll",
-                        Resource: "*"
-                    }]
-                })
-                : JSON.stringify({
-                    Version: "2012-10-17",
-                    Statement: [{
-                        Effect: "Allow",
-                        Action: [
-                            "logs:CreateLogGroup",
-                            "logs:CreateLogStream",
-                            "logs:PutLogEvents"
-                        ],
-                        Resource: "arn:aws:logs:*:*:*"
-                    }, {
-                        Effect: "Allow",
-                        Action: "bedrock:InvokeModel",
-                        Resource: "*"
-                    }]
-                }),
+            policy: JSON.stringify(policyDoc),
         }, { parent: this.role });
 
           // Create Lambda function
@@ -87,6 +76,8 @@ export class Query extends pulumi.ComponentResource {
             },
             timeout: args.timeout || 60,
         }, { parent: this, dependsOn: [combinedPolicy] });
+
+        this.lambdaArn = this.lambda.arn;
 
         // Create API Gateway
         this.api = new aws.apigatewayv2.Api(`query-api`, {

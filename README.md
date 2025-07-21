@@ -117,23 +117,57 @@ This follows the principle of least privilege, ensuring components only have acc
 
 ## Testing
 
-Run the comprehensive test suite:
+The project includes comprehensive unit and integration tests:
+
+### Unit Tests
+
+Run fast, mocked component tests:
 
 ```bash
-npm test
+npm run test:unit
 ```
 
-The test suite includes:
-- **Component Tests**: Verify proper instantiation and configuration
-- **Security Tests**: Validate conditional IAM policies
-- **Integration Tests**: Test component interactions
+### Integration Tests
 
-Test coverage includes:
-- ✅ Conditional IAM policies for both vector store types
+Run end-to-end infrastructure tests (deploys actual AWS resources):
+
+```bash
+# Prerequisites: AWS credentials configured
+npm run test:integration
+
+# Run all tests (unit + integration)
+npm run test:all
+```
+
+### Test Coverage
+
+**Unit Tests** (fast, mocked):
 - ✅ Component instantiation and configuration
+- ✅ Conditional IAM policies for both vector store types
 - ✅ S3 bucket notifications
 - ✅ API Gateway setup
 - ✅ Lambda function configuration
+
+**Integration Tests** (deploys real infrastructure):
+- ✅ Full infrastructure deployment
+- ✅ AWS resource creation and configuration
+- ✅ Conditional IAM policies in real AWS environment
+- ✅ OpenSearch Serverless collection setup
+- ✅ S3 bucket notifications with Lambda triggers
+- ✅ API Gateway endpoint accessibility
+- ✅ Pinecone configuration (when API key provided)
+- ✅ End-to-end document processing with CloudWatch log verification
+- ✅ Lambda function trigger testing
+- ✅ Concurrent document processing
+- ✅ Error handling validation
+
+### CI/CD Testing
+
+- **Unit tests**: Run on every push/PR
+- **Integration tests**: Run on pushes to main branch
+- **Security scanning**: Dependency auditing and security checks
+
+See `test/integration/README.md` for detailed integration test documentation.
 
 ## Development
 

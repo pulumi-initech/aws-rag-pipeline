@@ -1,0 +1,8 @@
+{
+  "import": "./loader.js",
+  "spec": "test/e2e/*.test.ts",
+  "timeout": 900000,
+  "ui": "bdd",
+  "bail": false,
+  "reporter": "spec"
+}

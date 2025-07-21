@@ -1,12 +1,12 @@
 import "mocha";
 import { expect } from "chai";
 import * as pulumi from "@pulumi/pulumi";
-import { VectorStore } from "../../components/VectorStore";
+import { VectorStore } from "../../components/VectorStore.ts";
 
 // Set up runtime mocks for Pulumi resources
 pulumi.runtime.setMocks({
     newResource: function (args: pulumi.runtime.MockResourceArgs) {
-        let mockState = {
+        const mockState = {
             ...args.inputs,
         };
         

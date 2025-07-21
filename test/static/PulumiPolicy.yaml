@@ -1,0 +1,3 @@
+runtime: nodejs
+description: Policy pack for RAG Pipeline infrastructure validation
+main: policy-pack.ts

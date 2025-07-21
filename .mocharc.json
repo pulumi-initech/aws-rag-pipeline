@@ -1,0 +1,6 @@
+{
+  "import": "./loader.js",
+  "spec": "test/components/*.test.ts",
+  "timeout": 10000,
+  "ui": "bdd"
+}

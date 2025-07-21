@@ -1,0 +1,22 @@
+{
+    "name": "rag-pipeline-policy-pack",
+    "version": "1.0.0",
+    "description": "Pulumi CrossGuard Policy Pack for RAG Pipeline",
+    "main": "policy-pack.ts",
+    "scripts": {
+        "build": "tsc",
+        "test": "pulumi policy test"
+    },
+    "dependencies": {
+        "@pulumi/aws": "^6.0.0",
+        "@pulumi/policy": "^1.0.0",
+        "@pulumi/pulumi": "^3.113.0"
+    },
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^5.0.0"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "^3.0.0"
+    }
+}

@@ -1,6 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
-import { VectorStoreConfig } from "./VectorStore";
+import { VectorStoreConfig } from "./VectorStore.ts";
 
 export interface IngestionArgs {
     inputBucket: aws.s3.BucketV2;
@@ -16,7 +16,6 @@ export class Ingestion extends pulumi.ComponentResource {
     public readonly invokePermission: aws.lambda.Permission;
     public readonly bucketNotification: aws.s3.BucketNotification;
 
-
     constructor(name: string, args: IngestionArgs, opts?: pulumi.ComponentResourceOptions) {
         super("rag:Ingestion", name, {}, opts);
 
@@ -26,72 +25,49 @@ export class Ingestion extends pulumi.ComponentResource {
 
         // Create IAM role with combined policies
         this.role = new aws.iam.Role(`ingestion-lambda-role`, {
-            name: "ingestion-lambda-role",
             assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({ Service: "lambda.amazonaws.com" }),
         }, { parent: this });
+
+        const policyDoc = {
+            Version: "2012-10-17",
+            Statement: [{
+                Effect: "Allow",
+                Action: [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                ],
+                Resource: "arn:aws:logs:*:*:*"
+            }, {
+                Effect: "Allow",
+                Action: "bedrock:InvokeModel",
+                Resource: "*"
+            }, {
+                Effect: "Allow",
+                Action: ["s3:GetObject"],
+                Resource: pulumi.interpolate`${args.inputBucket.arn}/*`
+            }, {
+                Effect: "Allow",
+                Action: [
+                    "kms:Decrypt",
+                    "kms:DescribeKey"
+                ],
+                Resource: "arn:aws:kms:*:*:key/aws/s3"
+            }]
+        };
+
+        if ( args.vectorStoreConfig.type === "opensearch" ) {
+            policyDoc.Statement.push({
+                Effect: "Allow",
+                Action: "aoss:APIAccessAll",
+                Resource: "*"
+            });
+        }
 
         // Combined policy for ingestion Lambda
         const combinedPolicy = new aws.iam.RolePolicy(`ingestion-lambda-role-policy`, {
             role: this.role.name,
-            policy: args.vectorStoreConfig.type === "opensearch" 
-                ? pulumi.interpolate`{
-                    "Version": "2012-10-17",
-                    "Statement": [{
-                        "Effect": "Allow",
-                        "Action": [
-                            "logs:CreateLogGroup",
-                            "logs:CreateLogStream",
-                            "logs:PutLogEvents"
-                        ],
-                        "Resource": "arn:aws:logs:*:*:*"
-                    }, {
-                        "Effect": "Allow",
-                        "Action": "bedrock:InvokeModel",
-                        "Resource": "*"
-                    }, {
-                        "Effect": "Allow",
-                        "Action": ["s3:GetObject"],
-                        "Resource": "${args.inputBucket.arn}/*"
-                    }, {
-                        "Effect": "Allow",
-                        "Action": [
-                            "kms:Decrypt",
-                            "kms:DescribeKey"
-                        ],
-                        "Resource": "arn:aws:kms:*:*:key/aws/s3"
-                    }, {
-                        "Effect": "Allow",
-                        "Action": "aoss:APIAccessAll",
-                        "Resource": "*"
-                    }]
-                }`
-                : pulumi.interpolate`{
-                    "Version": "2012-10-17",
-                    "Statement": [{
-                        "Effect": "Allow",
-                        "Action": [
-                            "logs:CreateLogGroup",
-                            "logs:CreateLogStream",
-                            "logs:PutLogEvents"
-                        ],
-                        "Resource": "arn:aws:logs:*:*:*"
-                    }, {
-                        "Effect": "Allow",
-                        "Action": "bedrock:InvokeModel",
-                        "Resource": "*"
-                    }, {
-                        "Effect": "Allow",
-                        "Action": ["s3:GetObject"],
-                        "Resource": "${args.inputBucket.arn}/*"
-                    }, {
-                        "Effect": "Allow",
-                        "Action": [
-                            "kms:Decrypt",
-                            "kms:DescribeKey"
-                        ],
-                        "Resource": "arn:aws:kms:*:*:key/aws/s3"
-                    }]
-                }`,
+            policy: pulumi.jsonStringify(policyDoc),
         }, { parent: this.role });
 
         // Create Lambda function

@@ -2,9 +2,6 @@ import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as pinecone from "@pinecone-database/pulumi";
 
-const current = aws.getCallerIdentity({});
-export const accountId = current.then(current => current.accountId);
-
 export interface VectorStoreArgs {
     type?: "opensearch" | "pinecone";
     collectionName?: string;
@@ -18,6 +15,7 @@ export interface VectorStoreConfig {
     endpoint: pulumi.Output<string>;
     type: string;
     indexName: pulumi.Output<string>;
+    collectionName?: string;
 }
 
 export class VectorStore extends pulumi.ComponentResource {
@@ -27,31 +25,32 @@ export class VectorStore extends pulumi.ComponentResource {
     public readonly pineconeIndex?: pinecone.PineconeIndex;
     public readonly indexName?: pulumi.Output<string>;
     public readonly config: VectorStoreConfig;
+    public readonly collectionName?: string;
 
     constructor(name: string, args: VectorStoreArgs = {}, opts?: pulumi.ComponentResourceOptions) {
         super("rag:VectorStore", name, {}, opts);
 
         const vectorStoreType = args.type || "opensearch";
-        const collectionName = args.collectionName || `rag-${Math.random().toString(36).substring(2, 8)}`;
+        this.collectionName =  args.collectionName || `rag-collection`;
 
         if (vectorStoreType === "opensearch") {
             // OpenSearch Serverless security policies
             const securityPolicies = [
                 new aws.opensearch.ServerlessSecurityPolicy(`${name}-encryption-policy`, {
-                    name: `${collectionName}-enc`,
+                    name: `${this.collectionName}-enc`,
                     type: "encryption",
                     policy: JSON.stringify({
-                        Rules: [{ ResourceType: "collection", Resource: [`collection/${collectionName}*`] }],
+                        Rules: [{ ResourceType: "collection", Resource: [`collection/${this.collectionName}*`] }],
                         AWSOwnedKey: true
                     })
                 }, { parent: this }),
                 new aws.opensearch.ServerlessSecurityPolicy(`${name}-network-policy`, {
-                    name: `${collectionName}-net`,
+                    name: `${this.collectionName}-net`,
                     type: "network",
                     policy: JSON.stringify([{
                         Rules: [
-                            { ResourceType: "collection", Resource: [`collection/${collectionName}*`] },
-                            { ResourceType: "dashboard", Resource: [`collection/${collectionName}*`] }
+                            { ResourceType: "collection", Resource: [`collection/${this.collectionName}*`] },
+                            { ResourceType: "dashboard", Resource: [`collection/${this.collectionName}*`] }
                         ],
                         AllowFromPublic: true
                     }])
@@ -59,27 +58,9 @@ export class VectorStore extends pulumi.ComponentResource {
             ];
 
             this.collection = new aws.opensearch.ServerlessCollection(`${name}-collection`, {
-                name: collectionName,
+                name: this.collectionName,
                 type: "VECTORSEARCH",
             }, { parent: this, dependsOn: securityPolicies });
-
-            // Create data access policy with exact collection name
-            new aws.opensearch.ServerlessAccessPolicy(`${name}-data-access-policy`, {
-                name: `${collectionName}-data`,
-                type: "data",
-                policy: pulumi.interpolate`[{
-                    "Rules": [{
-                        "Resource": ["collection/${collectionName}"],
-                        "Permission": ["aoss:CreateCollectionItems", "aoss:UpdateCollectionItems", "aoss:DescribeCollectionItems"],
-                        "ResourceType": "collection"
-                    }, {
-                        "Resource": ["index/${collectionName}/*"],
-                        "Permission": ["aoss:CreateIndex", "aoss:UpdateIndex", "aoss:DescribeIndex", "aoss:ReadDocument", "aoss:WriteDocument"],
-                        "ResourceType": "index"
-                    }],
-                    "Principal": ["arn:aws:iam::${accountId}:role/ingestion-lambda-role", "arn:aws:iam::${accountId}:role/query-lambda-role"]
-                }]`
-            }, { parent: this, dependsOn: [this.collection] });
 
             this.endpoint = this.collection.collectionEndpoint;
             this.collectionArn = this.collection.arn;
@@ -109,12 +90,10 @@ export class VectorStore extends pulumi.ComponentResource {
             endpoint: this.endpoint,
             type: vectorStoreType,
             indexName: this.indexName || pulumi.output("rag-documents-v2"),
+            collectionName: vectorStoreType === "opensearch" ? this.collectionName : undefined,
         };
 
         this.registerOutputs({
-            endpoint: this.endpoint,
-            collectionArn: this.collectionArn,
-            indexName: this.indexName,
             config: this.config,
         });
     }

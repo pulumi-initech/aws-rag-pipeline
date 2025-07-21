@@ -1,26 +1,48 @@
 {
     "name": "aws-rag-pipeline",
     "main": "index.ts",
+    "type": "module",
     "scripts": {
-        "test": "mocha 'test/**/*.test.ts' --require ts-node/register --timeout 10000",
-        "test:watch": "mocha 'test/**/*.test.ts' --require ts-node/register --watch --timeout 10000",
-        "test:coverage": "nyc mocha 'test/**/*.test.ts' --require ts-node/register --timeout 10000"
+        "build": "npx tsc --noEmit",
+        "lint": "eslint . --ext .ts",
+        "lint:fix": "eslint . --ext .ts --fix",
+        "lint:check": "eslint . --ext .ts --max-warnings 0",
+        "test": "mocha test/components/*.test.ts",
+        "test:unit": "mocha test/components/*.test.ts",
+        "test:integration": "mocha --config .mocharc.integration.json",
+        "test:e2e": "mocha --config .mocharc.e2e.json",
+        "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e",
+        "test:watch": "mocha test/components/*.test.ts --watch",
+        "test:coverage": "nyc mocha test/components/*.test.ts",
+        "pretest": "npm run lint:check && npm run build"
     },
     "devDependencies": {
-        "@types/node": "^18",
-        "@types/mocha": "^10.0.0",
+        "@aws-sdk/client-apigatewayv2": "^3.848.0",
+        "@aws-sdk/client-cloudwatch": "^3.848.0",
+        "@aws-sdk/client-cloudwatch-logs": "^3.849.0",
+        "@aws-sdk/client-iam": "^3.848.0",
+        "@aws-sdk/client-lambda": "^3.848.0",
+        "@aws-sdk/client-s3": "^3.848.0",
+        "@pulumi/eslint-plugin": "^0.3.1",
         "@types/chai": "^4.3.0",
-        "typescript": "^5.0.0",
-        "mocha": "^10.2.0",
+        "@types/mocha": "^10.0.0",
+        "@types/node": "^18",
+        "@types/node-fetch": "^2.6.12",
+        "@typescript-eslint/eslint-plugin": "^8.38.0",
+        "@typescript-eslint/parser": "^8.38.0",
         "chai": "^4.3.10",
-        "sinon": "^17.0.1",
+        "eslint": "^9.31.0",
+        "mocha": "^10.2.0",
+        "node-fetch": "^3.3.2",
         "nyc": "^15.1.0",
-        "ts-node": "^10.9.0"
+        "sinon": "^17.0.1",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.0.0"
     },
     "dependencies": {
         "@pinecone-database/pulumi": "^0.4.3",
         "@pulumi/aws": "^6.0.0",
-        "@pulumi/awsx": "^2.0.2",
+        "@pulumi/policy": "^1.16.0",
         "@pulumi/pulumi": "^3.113.0"
     }
 }
