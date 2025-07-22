@@ -41,17 +41,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: false
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
 
       - name: Get pnpm store directory
         shell: bash
@@ -96,16 +96,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -134,16 +135,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -157,7 +159,7 @@ jobs:
       - name: Setup ESC and inject credentials
         uses: pulumi/esc-action@v1
         with:
-          environment: ${{ vars.PULUMI_ORGANIZATION }}/aws-rag-pipeline/pr
+          environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/pr
 
       - name: Create PR stack configuration
         run: |
@@ -230,13 +232,13 @@ jobs:
       - name: Authenticate with Pulumi
         uses: pulumi/auth-actions@v1
         with:
-          organization: ${{ vars.PULUMI_ORGANIZATION }}
+          organization: ${{ env.PULUMI_ORGANIZATION }}
           requested-token-type: urn:pulumi:token-type:access_token:organization
 
       - name: Setup ESC and inject credentials
         uses: pulumi/esc-action@v1
         with:
-          environment: ${{ vars.PULUMI_ORGANIZATION }}/aws-rag-pipeline-staging
+          environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline-staging
 
       - name: Deploy to staging
         uses: pulumi/actions@v5
@@ -316,16 +318,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -333,13 +336,13 @@ jobs:
       - name: Authenticate with Pulumi
         uses: pulumi/auth-actions@v1
         with:
-          organization: ${{ vars.PULUMI_ORGANIZATION }}
+          organization: ${{ env.PULUMI_ORGANIZATION }}
           requested-token-type: urn:pulumi:token-type:access_token:organization
 
       - name: Setup ESC and inject credentials
         uses: pulumi/esc-action@v1
         with:
-          environment: ${{ vars.PULUMI_ORGANIZATION }}/aws-rag-pipeline-production
+          environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline-production
 
       - name: Deploy to production
         uses: pulumi/actions@v5
@@ -386,16 +389,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -403,7 +407,7 @@ jobs:
       - name: Authenticate with Pulumi
         uses: pulumi/auth-actions@v1
         with:
-          organization: ${{ vars.PULUMI_ORGANIZATION }}
+          organization: ${{ env.PULUMI_ORGANIZATION }}
           requested-token-type: urn:pulumi:token-type:access_token:organization
 
       - name: Deploy to ${{ github.event.inputs.environment }}
