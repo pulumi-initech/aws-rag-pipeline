@@ -23,10 +23,10 @@ on:
           - production
 
 env:
-  NODE_VERSION: 18
+  NODE_VERSION: 23
+  PULUUMI_ORGANIZATION: initech
   # OIDC authentication replaces PULUMI_ACCESS_TOKEN
   # AWS credentials will be injected via ESC
-  PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
 
 jobs:
   # =============================================================================
@@ -151,8 +151,13 @@ jobs:
       - name: Authenticate with Pulumi
         uses: pulumi/auth-actions@v1
         with:
-          organization: ${{ vars.PULUMI_ORGANIZATION }}
+          organization: ${{ env.PULUMI_ORGANIZATION }}
           requested-token-type: urn:pulumi:token-type:access_token:organization
+
+      - name: Setup ESC and inject credentials
+        uses: pulumi/esc-action@v1
+        with:
+          environment: ${{ vars.PULUMI_ORGANIZATION }}/aws-rag-pipeline/pr
 
       - name: Create PR stack configuration
         run: |
@@ -342,29 +347,29 @@ jobs:
           command: up
           stack-name: production
 
-      - name: Health check production deployment
-        run: |
-          echo "Performing health checks on production environment..."
-          sleep 15
-          # Add custom health check commands here
+      # - name: Health check production deployment
+      #   run: |
+      #     echo "Performing health checks on production environment..."
+      #     sleep 15
+      #     # Add custom health check commands here
 
-      - name: Notify deployment success
-        if: success()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: success
-          text: '🚀 AWS RAG Pipeline successfully deployed to production!'
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      # - name: Notify deployment success
+      #   if: success()
+      #   uses: 8398a7/action-slack@v3
+      #   with:
+      #     status: success
+      #     text: '🚀 AWS RAG Pipeline successfully deployed to production!'
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-      - name: Notify deployment failure
-        if: failure()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: failure
-          text: '❌ AWS RAG Pipeline production deployment failed!'
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      # - name: Notify deployment failure
+      #   if: failure()
+      #   uses: 8398a7/action-slack@v3
+      #   with:
+      #     status: failure
+      #     text: '❌ AWS RAG Pipeline production deployment failed!'
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # =============================================================================
   # MANUAL WORKFLOW DISPATCH
@@ -401,47 +406,8 @@ jobs:
           organization: ${{ vars.PULUMI_ORGANIZATION }}
           requested-token-type: urn:pulumi:token-type:access_token:organization
 
-      - name: Setup ESC and inject credentials
-        uses: pulumi/esc-action@v1
-        with:
-          environment: ${{ vars.PULUMI_ORGANIZATION }}/aws-rag-pipeline-${{ github.event.inputs.environment }}
-
       - name: Deploy to ${{ github.event.inputs.environment }}
         uses: pulumi/actions@v5
         with:
           command: up
           stack-name: ${{ github.event.inputs.environment }}
-
-  # =============================================================================
-  # CLEANUP JOB - Remove old PR stacks
-  # =============================================================================
-  cleanup:
-    name: Cleanup Old PR Stacks
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Authenticate with Pulumi
-        uses: pulumi/auth-actions@v1
-        with:
-          organization: ${{ vars.PULUMI_ORGANIZATION }}
-          requested-token-type: urn:pulumi:token-type:access_token:organization
-
-      - name: Setup ESC and inject credentials
-        uses: pulumi/esc-action@v1
-        with:
-          environment: ${{ vars.PULUMI_ORGANIZATION }}/aws-rag-pipeline-cleanup
-
-      - name: List and cleanup old PR stacks
-        run: |
-          echo "Listing all PR stacks..."
-          pulumi stack ls --all | grep "^pr-" | while read -r stack; do
-            echo "Found PR stack: $stack"
-            # Add logic to check if PR is closed and delete stack
-            # This would typically involve GitHub API calls
-          done
