@@ -1,4 +1,4 @@
-// index.ts (ANTI-PATTERN: Monolithic and hard to test)
+// index.ts (Monolithic and hard to test)
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import * as pinecone from "@pinecone-database/pulumi";

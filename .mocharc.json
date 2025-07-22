@@ -1,5 +1,6 @@
 {
   "import": "./loader.js",
+  "require": ["test/mocha.env.ts"],
   "spec": "test/unit/*.test.ts",
   "timeout": 10000,
   "ui": "bdd"

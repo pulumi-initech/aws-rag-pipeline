@@ -10,11 +10,16 @@ export interface IngestionArgs {
 }
 
 export class Ingestion extends pulumi.ComponentResource {
+    
     public readonly role: aws.iam.Role;
+    public readonly policy: aws.iam.RolePolicy;
     public readonly lambda: aws.lambda.Function;
-    public readonly lambdaArn: pulumi.Output<string>;
     public readonly invokePermission: aws.lambda.Permission;
     public readonly bucketNotification: aws.s3.BucketNotification;
+    
+    // component synthetic outputs
+    public readonly lambdaArn: pulumi.Output<string>;
+    public readonly roleArn: pulumi.Output<string>;
 
     constructor(name: string, args: IngestionArgs, opts?: pulumi.ComponentResourceOptions) {
         super("rag:Ingestion", name, {}, opts);
@@ -27,6 +32,8 @@ export class Ingestion extends pulumi.ComponentResource {
         this.role = new aws.iam.Role(`ingestion-lambda-role`, {
             assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({ Service: "lambda.amazonaws.com" }),
         }, { parent: this });
+
+        this.roleArn = this.role.arn;
 
         const policyDoc = {
             Version: "2012-10-17",
@@ -65,7 +72,7 @@ export class Ingestion extends pulumi.ComponentResource {
         }
 
         // Combined policy for ingestion Lambda
-        const combinedPolicy = new aws.iam.RolePolicy(`ingestion-lambda-role-policy`, {
+        this.policy = new aws.iam.RolePolicy(`ingestion-lambda-role-policy`, {
             role: this.role.name,
             policy: pulumi.jsonStringify(policyDoc),
         }, { parent: this.role });
@@ -87,7 +94,7 @@ export class Ingestion extends pulumi.ComponentResource {
                 },
             },
             timeout: args.timeout || 300,
-        }, { parent: this, dependsOn: [combinedPolicy] });
+        }, { parent: this, dependsOn: [this.role] });
 
         this.lambdaArn = this.lambda.arn;
 
@@ -107,10 +114,5 @@ export class Ingestion extends pulumi.ComponentResource {
                 events: ["s3:ObjectCreated:*"],
             }],
         }, { parent: this, dependsOn: [this.lambda] });
-
-        this.registerOutputs({
-            lambdaArn: this.lambdaArn,
-            roleArn: this.role.arn,
-        });
     }
 }

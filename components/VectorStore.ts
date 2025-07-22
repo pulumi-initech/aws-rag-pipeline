@@ -31,9 +31,17 @@ export class VectorStore extends pulumi.ComponentResource {
         super("rag:VectorStore", name, {}, opts);
 
         const vectorStoreType = args.type || "opensearch";
-        this.collectionName =  args.collectionName || `rag-collection`;
-
+     
         if (vectorStoreType === "opensearch") {
+
+            if (!args.collectionName) {
+                throw new Error("OpenSearch collection requires a collectionName argument.");
+            }
+
+            if (!RegExp(/^[a-z][a-z0-9-]{2,31}$/).test(args.collectionName)) {
+                throw new Error("OpenSearch collection names must be 3-32 characters, start with a letter, and contain only lowercase letters, numbers, and hyphens.");
+            }
+            
             // OpenSearch Serverless security policies
             const securityPolicies = [
                 new aws.opensearch.ServerlessSecurityPolicy(`${name}-encryption-policy`, {
@@ -65,10 +73,25 @@ export class VectorStore extends pulumi.ComponentResource {
             this.endpoint = this.collection.collectionEndpoint;
             this.collectionArn = this.collection.arn;
         } else if (vectorStoreType === "pinecone") {
-            const indexName = args.indexName || `rag-pipeline-${Math.random().toString(36).substring(2, 11)}`;
+            
+            
+            if (!args.dimension) {
+                throw new Error("Pinecone index requires a dimension argument.");
+            }
+
+            if (!args.indexName){
+                throw new Error("Pinecone index requires an indexName argument.");
+            }
+
+            // validate index name if provided
+            if (args.indexName){
+                if(!RegExp(/^[a-z][a-z0-9-]{2,62}$/).test(args.indexName)) {
+                    throw new Error("Pinecone index names must be 3-63 characters, start with a letter, and contain only lowercase letters, numbers, and hyphens.");
+                }       
+            }
             
             this.pineconeIndex = new pinecone.PineconeIndex(`${name}-index`, {
-                name: indexName,
+                name: args.indexName,
                 dimension: args.dimension || 1024,
                 metric: (args.metric as any) || "cosine",
                 spec: {

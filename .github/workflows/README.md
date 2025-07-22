@@ -52,10 +52,12 @@ This repository uses a comprehensive multi-stage CI/CD pipeline that ensures cod
 - **Staging**: Automatic deployment with health checks
 - **Production**: Manual approval required
 
-### Secret Management
-- All sensitive data stored in GitHub Secrets
-- ESC integration for additional security layers
-- No secrets in code or logs
+### OIDC Authentication & ESC Integration
+- **Token-less Authentication**: No long-lived secrets stored in GitHub
+- **Short-lived Credentials**: 1-2 hour AWS token duration
+- **Identity-based Access**: Uses GitHub identity for authentication
+- **Environment Separation**: Separate AWS roles per environment
+- **Complete Audit Trail**: Full visibility into deployments
 
 ### Security Scanning
 - **TruffleHog**: Detects leaked credentials
@@ -83,15 +85,33 @@ pnpm run test:e2e          # Document → Query flow
 
 ## ⚙️ Configuration
 
-### Required GitHub Secrets
+### OIDC Setup Required
+
+**Before using this workflow**, you must configure OIDC authentication:
+
+1. **Follow the setup guide**: See `.pulumi/OIDC-SETUP.md` for detailed instructions
+2. **Create AWS IAM roles** for each environment (pr, staging, production)
+3. **Register GitHub OIDC issuer** in Pulumi Cloud
+4. **Create Pulumi ESC environments** with the provided configurations
+5. **Set repository variables** (not secrets) in GitHub
+
+### Required GitHub Configuration
+
+#### Variables (Repository Settings → Variables)
 ```yaml
-PULUMI_ACCESS_TOKEN         # Pulumi Cloud access
-PULUMI_CONFIG_PASSPHRASE    # Stack encryption key
-AWS_ACCESS_KEY_ID           # AWS credentials
-AWS_SECRET_ACCESS_KEY       # AWS credentials
+PULUMI_ORGANIZATION         # Your Pulumi organization name
+```
+
+#### Secrets (Repository Settings → Secrets) 
+```yaml
 PINECONE_API_KEY           # Vector database (optional)
 SLACK_WEBHOOK_URL          # Notifications (optional)
 ```
+
+#### OIDC Authentication (No Secrets Required!)
+- **Pulumi Access Token**: Obtained via OIDC authentication
+- **AWS Credentials**: Injected via Pulumi ESC environments
+- **Short-lived Tokens**: 1-2 hour duration for security
 
 ### GitHub Environments
 Create these environments in your repository settings:

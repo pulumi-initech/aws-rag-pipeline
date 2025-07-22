@@ -1,4 +1,2 @@
 environment:
   - aws-rag-pipeline/staging
-config:
-  aws-rag-pipeline:collectionName: rag-yfeu3b-enc

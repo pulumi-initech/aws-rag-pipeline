@@ -1,0 +1,36 @@
+# Pulumi ESC Environment Configuration for PR Testing
+# This file provides example configuration for ephemeral PR environments
+# 
+# To use this:
+# 1. Create environment in Pulumi Cloud: pulumi/esc env init <org>/aws-rag-pipeline-pr
+# 2. Copy this configuration to the environment
+# 3. Update the roleArn to match your AWS IAM role
+
+values:
+  # AWS credentials via OIDC
+  aws:
+    login:
+      fn::open::aws-login:
+        oidc:
+          duration: 1h
+          roleArn: arn:aws:iam::123456789012:role/pulumi-esc-pr-role
+          sessionName: pulumi-esc-pr-session
+  
+  # Environment-specific configuration
+  environmentVariables:
+    AWS_REGION: us-east-1
+    PULUMI_ORGANIZATION: your-org
+    ENVIRONMENT: pr
+  
+  # Pulumi stack configuration
+  pulumiConfig:
+    aws:region: us-east-1
+    vectorStore: opensearch
+    collectionName: rag-pr
+    
+  # Export AWS credentials for GitHub Actions
+  outputs:
+    AWS_ACCESS_KEY_ID: ${aws.login.accessKeyId}
+    AWS_SECRET_ACCESS_KEY: ${aws.login.secretAccessKey}
+    AWS_SESSION_TOKEN: ${aws.login.sessionToken}
+    AWS_REGION: ${environmentVariables.AWS_REGION}

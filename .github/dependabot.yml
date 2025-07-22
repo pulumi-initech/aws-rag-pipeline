@@ -38,7 +38,6 @@ updates:
           - "@types/mocha"
           - "@types/chai"
           - "nyc"
-          - "sinon"
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
