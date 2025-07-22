@@ -40,8 +40,8 @@
     },
     "dependencies": {
         "@pinecone-database/pulumi": "^0.4.3",
-        "@pulumi/aws": "^6.0.0",
+        "@pulumi/aws": "^7.1.0",
         "@pulumi/policy": "^1.16.0",
-        "@pulumi/pulumi": "^3.113.0"
+        "@pulumi/pulumi": "^3.185.0"
     }
 }
