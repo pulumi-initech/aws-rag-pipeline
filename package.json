@@ -17,12 +17,12 @@
         "pretest": "npm run lint:check && npm run build"
     },
     "devDependencies": {
-        "@aws-sdk/client-apigatewayv2": "^3.848.0",
-        "@aws-sdk/client-cloudwatch": "^3.848.0",
-        "@aws-sdk/client-cloudwatch-logs": "^3.849.0",
-        "@aws-sdk/client-iam": "^3.848.0",
-        "@aws-sdk/client-lambda": "^3.848.0",
-        "@aws-sdk/client-s3": "^3.848.0",
+        "@aws-sdk/client-apigatewayv2": "^3.859.0",
+        "@aws-sdk/client-cloudwatch": "^3.859.0",
+        "@aws-sdk/client-cloudwatch-logs": "^3.859.0",
+        "@aws-sdk/client-iam": "^3.859.0",
+        "@aws-sdk/client-lambda": "^3.859.0",
+        "@aws-sdk/client-s3": "^3.859.0",
         "@pulumi/eslint-plugin": "^0.3.1",
         "@types/chai": "^4.3.0",
         "@types/mocha": "^10.0.0",
