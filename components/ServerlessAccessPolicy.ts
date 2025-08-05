@@ -18,11 +18,11 @@ export class ServerlessAccessPolicy extends pulumi.ComponentResource {
             policy: pulumi.interpolate`[{
                 "Rules": [{
                     "Resource": ["collection/${args.collectionName}"],
-                    "Permission": ["aoss:CreateCollectionItems", "aoss:UpdateCollectionItems", "aoss:DescribeCollectionItems"],
+                    "Permission": ["aoss:CreateCollectionItems", "aoss:UpdateCollectionItems", "aoss:DescribeCollectionItems", "aoss:DeleteCollectionItems"],
                     "ResourceType": "collection"
                 }, {
                     "Resource": ["index/${args.collectionName}/*"],
-                    "Permission": ["aoss:CreateIndex", "aoss:UpdateIndex", "aoss:DescribeIndex", "aoss:ReadDocument", "aoss:WriteDocument"],
+                    "Permission": ["aoss:CreateIndex", "aoss:UpdateIndex", "aoss:DescribeIndex", "aoss:DeleteIndex", "aoss:ReadDocument", "aoss:WriteDocument"],
                     "ResourceType": "index"
                 }],
                 "Principal": [${pulumi.output(args.lambdaRoleArns).apply(arns => arns.map(arn => `"${arn}"`).join(", "))}]

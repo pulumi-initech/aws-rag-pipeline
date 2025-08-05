@@ -385,6 +385,103 @@ Document ID: ${timestamp}
     }
 
     /**
+     * Clear vector store index based on type
+     */
+    static async clearVectorStoreIndex(
+        awsHelper: any,
+        vectorStoreType: string,
+        endpoint: string,
+        indexName: string
+    ): Promise<void> {
+        if (vectorStoreType === 'opensearch') {
+            await awsHelper.clearOpenSearchIndex(endpoint, indexName);
+        } else if (vectorStoreType === 'pinecone') {
+            console.log('Pinecone index clearing not implemented yet');
+            // TODO: Implement Pinecone index clearing
+        } else {
+            throw new Error(`Unsupported vector store type: ${vectorStoreType}`);
+        }
+    }
+
+    /**
+     * Get document count from vector store
+     */
+    static async getVectorStoreDocumentCount(
+        awsHelper: any,
+        vectorStoreType: string,
+        endpoint: string,
+        indexName: string
+    ): Promise<number> {
+        if (vectorStoreType === 'opensearch') {
+            return await awsHelper.getOpenSearchIndexDocumentCount(endpoint, indexName);
+        } else if (vectorStoreType === 'pinecone') {
+            console.log('Pinecone document count not implemented yet');
+            return 0;
+            // TODO: Implement Pinecone document count
+        } else {
+            throw new Error(`Unsupported vector store type: ${vectorStoreType}`);
+        }
+    }
+
+    /**
+     * Setup clean test environment by clearing vector store
+     */
+    static async setupCleanTestEnvironment(
+        awsHelper: any,
+        outputs: any,
+        vectorStoreType: string = 'opensearch'
+    ): Promise<void> {
+        try {
+            const endpoint = outputs.vectorStoreEndpoint?.value || outputs.vectorStoreEndpoint;
+            const indexName = outputs.indexName?.value || 'rag-documents-v2';
+            
+            console.log(`Setting up clean test environment for ${vectorStoreType}...`);
+            console.log(`Endpoint: ${endpoint}`);
+            console.log(`Index: ${indexName}`);
+            
+            // Get document count before clearing
+            const docCountBefore = await this.getVectorStoreDocumentCount(
+                awsHelper, vectorStoreType, endpoint, indexName
+            );
+            
+            console.log(`Documents before clearing: ${docCountBefore}`);
+            
+            if (docCountBefore > 0) {
+                await this.clearVectorStoreIndex(awsHelper, vectorStoreType, endpoint, indexName);
+                console.log('Vector store index cleared for clean test state');
+                
+                // Wait a moment for the operation to complete
+                await this.wait(2000);
+                
+                // Verify clearing worked
+                const docCountAfter = await this.getVectorStoreDocumentCount(
+                    awsHelper, vectorStoreType, endpoint, indexName
+                );
+                console.log(`Documents after clearing: ${docCountAfter}`);
+            } else {
+                console.log('Index already empty, no clearing needed');
+            }
+        } catch (error: any) {
+            console.log(`Error setting up clean test environment: ${error.message || error}`);
+            // Don't fail the test setup for index clearing issues
+        }
+    }
+
+    /**
+     * Parse log streams for an event message
+     */
+    static parseLogStreamsForEvent(logMessages: string[]): string | undefined {
+        let eventMessage: string | undefined = undefined;
+        for (const message of logMessages) {
+            if (message.includes("Received event: ")) {
+                eventMessage = message;
+            }
+        }
+        return eventMessage;;
+    }
+
+
+    /**
      * Parse log streams for processing indicators
      */
     static parseLogStreamsForProcessing(
@@ -400,16 +497,12 @@ Document ID: ${timestamp}
         for (const message of logMessages) {
             // Check for processing indicators
             if (message.includes(testFileName)) {
-                // console.debug(`Found processing log: ${message}`);
+                 console.debug(`Found processing log: ${message}`);
             }
 
             // Check for success indicators
-            if (message.includes("successfully") || 
-                message.includes("completed") ||
-                message.includes("processed") ||
-                message.includes("ingested")) {
+            if (message.includes("Successfully processed")) {
                 successFound = true;
-               // console.debug(`Found success log: ${message}`);
             }
 
             // Check for error indicators
@@ -432,58 +525,6 @@ Document ID: ${timestamp}
         return {
             successFound: successFound && hasRelevantLogs,
             errorFound
-        };
-    }
-
-    /**
-     * Collect and parse Lambda CloudWatch logs for processing indicators
-     */
-    static async collectAndParseLambdaLogs(
-        awsHelper: any,
-        logGroupName: string,
-        logStreams: any[],
-        testFileName: string,
-        options: {
-            maxStreams?: number;
-            timeWindowMinutes?: number;
-            maxEvents?: number;
-        } = {}
-    ): Promise<{
-        successFound: boolean;
-        errorFound: boolean;
-        logMessages: string[];
-    }> {
-        const {
-            maxStreams = 5,
-            timeWindowMinutes = 5,
-            maxEvents = 100
-        } = options;
-
-        // Step 1: Get log events from the most recent streams
-        const logMessages: string[] = [];
-
-        for (const logStream of logStreams?.slice(0, maxStreams) || []) {
-            try {
-                const logEvents = await awsHelper.getLogEvents(logGroupName, logStream.logStreamName!, {
-                    startTime: Date.now() - (timeWindowMinutes * 60 * 1000), // Convert minutes to milliseconds
-                    limit: maxEvents
-                });
-
-                for (const event of logEvents || []) {
-                    const message = event.message || "";
-                    logMessages.push(message);
-                }
-            } catch (error) {
-                console.log(`Could not read log stream ${logStream.logStreamName}: ${error}`);
-            }
-        }
-
-        // Step 2: Parse log messages for processing indicators
-        const analysisResult = TestUtils.parseLogStreamsForProcessing(logMessages, testFileName);
-
-        return {
-            ...analysisResult,
-            logMessages
         };
     }
 }

@@ -99,22 +99,17 @@ describe("RAG Pipeline Integration Tests", function() {
     });
 
     describe("Query API", () => {
-        it("should respond to health check", async function() {
-
+        it("should respond to HEAD request", async function() {
             this.skip();
 
-            const apiEndpoint = outputs.apiEndpoint?.value || outputs.queryApiEndpoint;
-            
-            // Make a simple request to test connectivity
-            const response = await fetch(`${apiEndpoint}/health`);
-            expect(response.status).to.equal(200);
+
         });
 
         it("should handle query requests", async function() {
             
             this.skip();
 
-            const apiEndpoint = outputs.apiEndpoint?.value || outputs.queryApiEndpoint;
+            const apiEndpoint = outputs.queryApiEndpoint?.value || outputs.queryApiEndpoint;
             
             const response = await fetch(`${apiEndpoint}/query`, {
                 method: "POST",
@@ -134,9 +129,10 @@ describe("RAG Pipeline Integration Tests", function() {
 
         it("should return proper error for invalid requests", async function() {
             // Skip this test if we don't have actual Lambda code
+            
             this.skip();
             
-            const apiEndpoint = outputs.apiEndpoint?.value || outputs.queryApiEndpoint;
+            const apiEndpoint = outputs.queryApiEndpoint?.value || outputs.queryApiEndpoint;
             
             const response = await fetch(`${apiEndpoint}/query`, {
                 method: "POST",

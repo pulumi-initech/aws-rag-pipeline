@@ -11,7 +11,7 @@ const inputBucket = new SecureBucket("input");
 // Create vector store
 const vectorStore = new VectorStore("vector-store", {
     type: vectorStoreType as "opensearch" | "pinecone",
-    collectionName: config.get("collectionName"),
+    collectionName: config.require("collectionName"),
 });
 
 // Create ingestion pipeline
@@ -38,3 +38,4 @@ export const inputBucketName = inputBucket.bucketName;
 export const ingestionLambdaArn = ingestion.lambdaArn;
 export const queryLambdaArn = query.lambdaArn;
 export const queryApiEndpoint = query.apiEndpoint;
+export const indexName = vectorStore.config.collectionName || vectorStore.config.indexName;

@@ -1,6 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as aws from "@pulumi/aws";
 import { VectorStoreConfig } from "./VectorStore.ts";
+import { ContainerImage } from "./ContainerImage.ts";
 
 export interface IngestionArgs {
     inputBucket: aws.s3.BucketV2;
@@ -13,6 +14,7 @@ export class Ingestion extends pulumi.ComponentResource {
     
     public readonly role: aws.iam.Role;
     public readonly policy: aws.iam.RolePolicy;
+    public readonly containerImage: ContainerImage;
     public readonly lambda: aws.lambda.Function;
     public readonly invokePermission: aws.lambda.Permission;
     public readonly bucketNotification: aws.s3.BucketNotification;
@@ -24,9 +26,10 @@ export class Ingestion extends pulumi.ComponentResource {
     constructor(name: string, args: IngestionArgs, opts?: pulumi.ComponentResourceOptions) {
         super("rag:Ingestion", name, {}, opts);
 
-        // Get Pinecone API key if vector store is Pinecone
+        // Get Pinecone configuration if vector store is Pinecone
         const pineconeConfig = new pulumi.Config("pinecone");
         const pineconeApiKey = pineconeConfig.get("APIKey") || "";
+        const pineconeEnvironment = pineconeConfig.get("Environment") || "us-east-1-aws";
 
         // Create IAM role with combined policies
         this.role = new aws.iam.Role(`ingestion-lambda-role`, {
@@ -37,7 +40,7 @@ export class Ingestion extends pulumi.ComponentResource {
 
         const policyDoc = {
             Version: "2012-10-17",
-            Statement: [{
+            Statement:  [{
                 Effect: "Allow",
                 Action: [
                     "logs:CreateLogGroup",
@@ -60,6 +63,15 @@ export class Ingestion extends pulumi.ComponentResource {
                     "kms:DescribeKey"
                 ],
                 Resource: "arn:aws:kms:*:*:key/aws/s3"
+            },{
+                Effect: "Allow",
+                Action: [
+                    "ecr:GetAuthorizationToken",
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:GetDownloadUrlForLayer",
+                    "ecr:BatchGetImage",
+                ],
+                Resource: "*"
             }]
         };
 
@@ -77,24 +89,30 @@ export class Ingestion extends pulumi.ComponentResource {
             policy: pulumi.jsonStringify(policyDoc),
         }, { parent: this.role });
 
-        // Create Lambda function
-        this.lambda = new aws.lambda.Function(`ingestion-lambda`, {
+        // Create container image
+        this.containerImage = new ContainerImage(`ingestion-lambda`, {
+            name: "ingestion-lambda",
+            dockerfilePath: `${args.lambdaCodePath || "./lambda/ingestion"}/Dockerfile`,
+            contextPath: args.lambdaCodePath || "./lambda/ingestion",
+        }, { parent: this });
+
+        // Create Lambda function with container image
+        this.lambda = new aws.lambda.Function(`ingestion-lambda-v3`, {
             role: this.role.arn,
-            runtime: "nodejs18.x",
-            handler: "index.handler",
-            code: new pulumi.asset.AssetArchive({
-                ".": new pulumi.asset.FileArchive(args.lambdaCodePath || "./lambda/ingestion"),
-            }),
+            packageType: "Image",
+            imageUri: this.containerImage.imageUri,
             environment: {
                 variables: {
                     VECTOR_STORE_ENDPOINT: args.vectorStoreConfig.endpoint,
                     VECTOR_STORE_TYPE: args.vectorStoreConfig.type,
                     INDEX_NAME: args.vectorStoreConfig.indexName,
                     PINECONE_API_KEY: pineconeApiKey,
+                    PINECONE_ENVIRONMENT: pineconeEnvironment,
                 },
             },
-            timeout: args.timeout || 300,
-        }, { parent: this, dependsOn: [this.role] });
+            timeout: args.timeout || 900,
+            memorySize: 1024,
+        }, { parent: this, dependsOn: [this.role, this.containerImage.image] });
 
         this.lambdaArn = this.lambda.arn;
 
@@ -114,5 +132,10 @@ export class Ingestion extends pulumi.ComponentResource {
                 events: ["s3:ObjectCreated:*"],
             }],
         }, { parent: this, dependsOn: [this.lambda] });
+
+        this.registerOutputs({
+            lambdaArn: this.lambdaArn,
+            roleArn: this.roleArn,      
+        });
     }
 }

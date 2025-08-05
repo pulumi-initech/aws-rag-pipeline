@@ -25,7 +25,6 @@ export class VectorStore extends pulumi.ComponentResource {
     public readonly pineconeIndex?: pinecone.PineconeIndex;
     public readonly indexName?: pulumi.Output<string>;
     public readonly config: VectorStoreConfig;
-    public readonly collectionName?: string;
 
     constructor(name: string, args: VectorStoreArgs = {}, opts?: pulumi.ComponentResourceOptions) {
         super("rag:VectorStore", name, {}, opts);
@@ -45,20 +44,20 @@ export class VectorStore extends pulumi.ComponentResource {
             // OpenSearch Serverless security policies
             const securityPolicies = [
                 new aws.opensearch.ServerlessSecurityPolicy(`${name}-encryption-policy`, {
-                    name: `${this.collectionName}-enc`,
+                    name: `${args.collectionName}-enc`,
                     type: "encryption",
                     policy: JSON.stringify({
-                        Rules: [{ ResourceType: "collection", Resource: [`collection/${this.collectionName}*`] }],
+                        Rules: [{ ResourceType: "collection", Resource: [`collection/${args.collectionName}`] }],
                         AWSOwnedKey: true
                     })
                 }, { parent: this }),
                 new aws.opensearch.ServerlessSecurityPolicy(`${name}-network-policy`, {
-                    name: `${this.collectionName}-net`,
+                    name: `${args.collectionName}-net`,
                     type: "network",
                     policy: JSON.stringify([{
                         Rules: [
-                            { ResourceType: "collection", Resource: [`collection/${this.collectionName}*`] },
-                            { ResourceType: "dashboard", Resource: [`collection/${this.collectionName}*`] }
+                            { ResourceType: "collection", Resource: [`collection/${args.collectionName}`] },
+                            { ResourceType: "dashboard", Resource: [`collection/${args.collectionName}`] }
                         ],
                         AllowFromPublic: true
                     }])
@@ -66,9 +65,9 @@ export class VectorStore extends pulumi.ComponentResource {
             ];
 
             this.collection = new aws.opensearch.ServerlessCollection(`${name}-collection`, {
-                name: this.collectionName,
+                name: args.collectionName,
                 type: "VECTORSEARCH",
-            }, { parent: this, dependsOn: securityPolicies });
+            }, { parent: this, dependsOn: securityPolicies, deleteBeforeReplace: true });
 
             this.endpoint = this.collection.collectionEndpoint;
             this.collectionArn = this.collection.arn;
@@ -113,7 +112,7 @@ export class VectorStore extends pulumi.ComponentResource {
             endpoint: this.endpoint,
             type: vectorStoreType,
             indexName: this.indexName || pulumi.output("rag-documents-v2"),
-            collectionName: vectorStoreType === "opensearch" ? this.collectionName : undefined,
+            collectionName: vectorStoreType === "opensearch" ? args.collectionName : undefined,
         };
 
         this.registerOutputs({

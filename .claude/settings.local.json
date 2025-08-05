@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "mcp__pulumi__pulumi-cli-preview",
-      "Bash(esc run:*)"
+      "Bash(esc run:*)",
+      "Bash(aws logs describe-log-groups:*)"
     ],
     "deny": []
   }

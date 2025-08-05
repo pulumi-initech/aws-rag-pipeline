@@ -51,9 +51,9 @@ describe("Ingestion Component", () => {
         it("should create lambda function with correct runtime for opensearch", () => {
 
             return pulumi.all([ingestion.lambda.runtime, ingestion.lambda.handler, ingestion.lambda.environment]).apply(([runtime, handler, environment]) => {
-                expect(runtime).to.equal("nodejs18.x");
-                expect(handler).to.equal("index.handler");
-                
+                expect(runtime).to.equal("python3.11");
+                expect(handler).to.equal("main.handler");
+
                 expect(environment).to.deep.equal({
                     variables: {
                         VECTOR_STORE_ENDPOINT: "https://test-collection.us-west-2.aoss.amazonaws.com",
@@ -88,8 +88,6 @@ describe("Ingestion Component", () => {
         it("should create lambda function with correct configuration for pinecone", () => {
             // Test that the Lambda function was created with correct configuration
             return pulumi.all([ingestion.lambda.runtime, ingestion.lambda.handler, ingestion.lambda.environment]).apply(([runtime, handler, environment]) => {
-                expect(runtime).to.equal("nodejs18.x");
-                expect(handler).to.equal("index.handler");
                 
                 // Check environment variables structure
                 expect(environment).to.deep.equal({

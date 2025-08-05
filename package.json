@@ -23,6 +23,8 @@
         "@aws-sdk/client-iam": "^3.848.0",
         "@aws-sdk/client-lambda": "^3.848.0",
         "@aws-sdk/client-s3": "^3.848.0",
+        "@aws-sdk/credential-provider-node": "^3.848.0",
+        "@opensearch-project/opensearch": "^2.5.0",
         "@pulumi/eslint-plugin": "^0.3.1",
         "@types/chai": "^4.3.0",
         "@types/mocha": "^10.0.0",
@@ -41,6 +43,7 @@
     "dependencies": {
         "@pinecone-database/pulumi": "^0.4.3",
         "@pulumi/aws": "^6.0.0",
+        "@pulumi/docker-build": "^0.0.12",
         "@pulumi/policy": "^1.16.0",
         "@pulumi/pulumi": "^3.113.0"
     }
