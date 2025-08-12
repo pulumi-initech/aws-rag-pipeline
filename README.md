@@ -1,20 +1,22 @@
 # AWS RAG Pipeline
 
-A Retrieval-Augmented Generation (RAG) pipeline built with Pulumi and TypeScript, supporting both OpenSearch Serverless and Pinecone vector stores with conditional IAM policies.
+A Retrieval-Augmented Generation (RAG) pipeline built with Pulumi and TypeScript, supporting both OpenSearch Serverless and Pinecone vector stores with conditional IAM policies. Lambda functions are implemented in Python using LangChain and containerized with Docker for scalable deployment.
 
 ## Architecture
 
 This project creates a complete RAG pipeline with:
 
-- **Document Ingestion**: S3-triggered Lambda function that processes documents and stores embeddings
-- **Query Processing**: API Gateway + Lambda for semantic search and response generation
+- **Document Ingestion**: S3-triggered containerized Lambda function (Python) that processes documents and stores embeddings using LangChain and AWS Bedrock
+- **Query Processing**: API Gateway + containerized Lambda (Python) for semantic search and response generation using LangChain
 - **Vector Store**: Support for both OpenSearch Serverless and Pinecone with conditional configuration
+- **Container Infrastructure**: Docker-based Lambda functions with multi-stage builds and ECR repositories
 - **Security**: Conditional IAM policies that only grant necessary permissions based on vector store type
 
 ## Prerequisites
 
 - Pulumi CLI (>= v3): https://www.pulumi.com/docs/get-started/install/
 - Node.js (>= 18): https://nodejs.org/
+- Docker: Required for building Lambda container images
 - AWS credentials configured (e.g., via `aws configure` or environment variables)
 - For Pinecone: API key configured in Pulumi config
 
@@ -23,7 +25,7 @@ This project creates a complete RAG pipeline with:
 1. Clone and install dependencies:
 
    ```bash
-   npm install
+   pnpm install
    ```
 
 2. Configure your project:
@@ -68,19 +70,37 @@ This project creates a complete RAG pipeline with:
 
 ```
 ├── components/
+│   ├── ContainerImage.ts    # Docker container image component
 │   ├── Ingestion.ts         # Document ingestion component
 │   ├── Query.ts             # Query processing component
+│   ├── SecureBucket.ts      # S3 bucket with security policies
+│   ├── ServerlessAccessPolicy.ts # OpenSearch security policies
 │   └── VectorStore.ts       # Vector store abstraction
 ├── lambda/
-│   ├── ingestion/           # Document processing Lambda
-│   └── query/               # Query processing Lambda
+│   ├── ingestion/           # Document processing Lambda (Python)
+│   │   ├── Dockerfile       # Container image definition
+│   │   ├── main.py          # Lambda function code
+│   │   └── requirements.txt # Python dependencies
+│   └── query/               # Query processing Lambda (Python)
+│       ├── Dockerfile       # Container image definition
+│       ├── main.py          # Lambda function code
+│       └── requirements.txt # Python dependencies
 ├── test/
-│   └── components/          # Unit tests for components
+│   ├── e2e/                 # End-to-end tests
+│   ├── integration/         # Integration tests
+│   ├── unit/                # Unit tests for components
+│   └── static/              # Static analysis and policy tests
 ├── index.ts                 # Main Pulumi program
+├── rag-architecture-hld.md  # High-level design documentation
 └── README.md
 ```
 
 ## Components
+
+### ContainerImage Component
+- **Docker Build**: Multi-stage container builds for Lambda functions
+- **ECR Integration**: Pushes images to Amazon ECR repositories
+- **Platform Support**: Builds for linux/amd64 architecture
 
 ### VectorStore Component
 - **OpenSearch**: Creates serverless collection with security policies
@@ -89,12 +109,14 @@ This project creates a complete RAG pipeline with:
 
 ### Ingestion Component
 - **S3 Integration**: Listens for object creation events
-- **Lambda Function**: Processes documents and generates embeddings
+- **Containerized Lambda**: Python-based function using LangChain for document processing
+- **Embedding Generation**: Uses AWS Bedrock Titan embeddings model
 - **Conditional IAM**: Only includes OpenSearch permissions when using OpenSearch
 
 ### Query Component
 - **API Gateway**: HTTP API for query endpoint
-- **Lambda Function**: Handles semantic search and response generation
+- **Containerized Lambda**: Python-based function using LangChain for semantic search
+- **RAG Chain**: Implements RetrievalQA chain with custom prompts
 - **Conditional IAM**: Only includes OpenSearch permissions when using OpenSearch
 
 ## Configuration
@@ -124,7 +146,7 @@ The project includes comprehensive unit and integration tests:
 Run fast, mocked component tests:
 
 ```bash
-npm run test:unit
+pnpm run test:unit
 ```
 
 ### Integration Tests
@@ -133,10 +155,13 @@ Run end-to-end infrastructure tests (deploys actual AWS resources):
 
 ```bash
 # Prerequisites: AWS credentials configured
-npm run test:integration
+pnpm run test:integration
 
-# Run all tests (unit + integration)
-npm run test:all
+# Run end-to-end tests
+pnpm run test:e2e
+
+# Run all tests (unit + integration + e2e)
+pnpm run test:all
 ```
 
 ### Test Coverage
@@ -180,9 +205,14 @@ See `test/integration/README.md` for detailed integration test documentation.
 
 ### Lambda Functions
 
-Lambda functions are located in the `lambda/` directory:
-- `ingestion/`: Document processing and embedding generation
-- `query/`: Semantic search and response generation
+Lambda functions are containerized Python applications located in the `lambda/` directory:
+- `ingestion/`: Document processing and embedding generation using LangChain and AWS Bedrock
+- `query/`: Semantic search and response generation using LangChain RetrievalQA chains
+
+Each function includes:
+- `main.py`: Lambda handler code
+- `Dockerfile`: Multi-stage container build configuration  
+- `requirements.txt`: Python dependencies including LangChain and AWS SDK
 
 ## Outputs
 
@@ -210,9 +240,10 @@ The pipeline includes:
 ## Contributing
 
 1. Make changes to components or Lambda functions
-2. Add or update tests in `test/components/`
-3. Run tests: `npm test`
-4. Update documentation as needed
+2. Add or update tests in `test/unit/`, `test/integration/`, or `test/e2e/`
+3. Run tests: `pnpm test`
+4. Run linting: `pnpm run lint`
+5. Update documentation as needed
 
 ## License
 
