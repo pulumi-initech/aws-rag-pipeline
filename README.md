@@ -123,7 +123,7 @@ This project creates a complete RAG pipeline with:
 
 | Key | Description | Default | Required |
 |-----|-------------|---------|----------|
-| `aws:region` | AWS region for deployment | `us-west-2` | No |
+| `aws:region` | AWS region for deployment | `us-east-1` | No |
 | `vectorStoreType` | Vector store type (`opensearch` or `pinecone`) | `opensearch` | No |
 | `pinecone:APIKey` | Pinecone API key (when using Pinecone) | - | Only for Pinecone |
 
