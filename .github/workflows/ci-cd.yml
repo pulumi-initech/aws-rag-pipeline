@@ -252,7 +252,7 @@ jobs:
   # END-TO-END TESTS - Staging environment
   # =============================================================================
   e2e_tests_staging:
-    name: E2E Tests (Staging)
+    name: Integration and E2E Tests (Staging)
     runs-on: ubuntu-latest
     needs: deploy_staging
     environment: staging
@@ -288,6 +288,13 @@ jobs:
         uses: pulumi/esc-action@v1
         with:
           environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/staging
+
+      - name: Run integration tests against staging
+        run: esc run aws-rag-pipeline/staging -i pnpm run test:integration -- --reporter mocha-ctrf-json-reporter 
+        timeout-minutes: 20
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          PULUMI_STACK_NAME: staging
 
       - name: Run E2E tests against staging
         run: esc run aws-rag-pipeline/staging -i pnpm run test:e2e -- --reporter mocha-ctrf-json-reporter 
