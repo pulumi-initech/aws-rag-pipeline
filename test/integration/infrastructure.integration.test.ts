@@ -1,7 +1,7 @@
 import "mocha";
 import { expect } from "chai";
 import { Stack } from "@pulumi/pulumi/automation/index.js";
-import { select } from "./automation.ts";
+import { select } from "../helpers/automation.ts";
 import { AWSHelper, LambdaS3InvokePermission, TestUtils, queryAPI } from "../helpers/index.ts";
 // import { skip } from "node:test"; // Currently unused
 import { FunctionConfiguration } from "@aws-sdk/client-lambda";

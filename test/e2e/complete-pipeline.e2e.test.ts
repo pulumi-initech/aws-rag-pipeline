@@ -1,6 +1,6 @@
 import "mocha";
 import { expect } from "chai";
-import { select } from "./automation.ts";
+import { select } from "../helpers/automation.ts";
 import { AWSHelper } from "../helpers/AWSHelper.ts";
 import { queryAPI, TestUtils } from "../helpers/TestUtils.ts";
 
