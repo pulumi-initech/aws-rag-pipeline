@@ -230,7 +230,6 @@ jobs:
           PULUMI_STACK_NAME: pr-${{ github.event.number }}
 
       - name: Publish Integration Test Summary Results
-        dependencies: Run integration tests
         if: steps.run_integration_tests_pr.outputs.should_run == 'true'
         run: npx github-actions-ctrf ctrf/ctrf-report.json --pr-comment true --title "Integration Tests Results for PR #${{ github.event.number }}" 
 
