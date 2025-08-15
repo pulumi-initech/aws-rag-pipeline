@@ -138,13 +138,14 @@ jobs:
 
       - name: Publish Integration Test Summary Results
         if: always()
-        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for PR"
+        run: npx github-actions-ctrf ctrf/ctrf-report.json --pr-comment true --title "Integration Tests Results for PR"
 
-      # - name: Destroy ephemeral stack
-      #   if: always()
-      #   uses: pulumi/actions@v5
-      #   with:
-      #     command: destroy
-      #     stack-name: pr-${{ github.event.number }}
-      #     comment-on-pr: false
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Destroy ephemeral stack
+        if: always()
+        uses: pulumi/actions@v5
+        with:
+          command: destroy
+          stack-name: pr-${{ github.event.number }}
+          comment-on-pr: false
+          remove: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
