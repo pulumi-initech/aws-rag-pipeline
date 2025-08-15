@@ -9,6 +9,7 @@ on:
 
 env:
   NODE_VERSION: 23
+  PULUMI_ORGANIZATION: initech
 
 jobs:
   quality_and_tests:
