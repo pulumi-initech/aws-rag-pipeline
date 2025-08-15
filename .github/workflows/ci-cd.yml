@@ -279,6 +279,7 @@ jobs:
         uses: pulumi/auth-actions@v1
         with:
           organization: ${{ env.PULUMI_ORGANIZATION }}
+          requested-token-type: urn:pulumi:token-type:access_token:organization
 
       - name: Setup ESC and inject credentials
         uses: pulumi/esc-action@v1
@@ -292,7 +293,7 @@ jobs:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Publish Test Summary Results (CTRF example)
-        run: npx github-actions-ctrf  ctrf/ctrf-report.json
+        run: npx github-actions-ctrf ctrf/ctrf-report.json
 
 
   # =============================================================================
