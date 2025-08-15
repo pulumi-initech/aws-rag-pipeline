@@ -1,167 +1,115 @@
 # Integration Tests
 
-This directory contains integration tests that deploy actual infrastructure using Pulumi's Automation API and verify the deployment works correctly.
+Integration tests that deploy actual infrastructure using Pulumi Automation API and verify deployment correctness.
 
-## Test Structure
+## Files
 
-- `automation.ts` - Helper functions for deploying and managing Pulumi stacks
-- `infrastructure.integration.test.ts` - Tests for OpenSearch configuration and conditional inline IAM policies
-- `pinecone.integration.test.ts` - Tests for Pinecone configuration (requires API key)
-- `document-processing.integration.test.ts` - End-to-end document processing tests with CloudWatch log verification
+- `infrastructure.integration.test.ts` - Core infrastructure and IAM policy validation
+- `automation.ts` - Pulumi stack management helpers
 
-## Running Integration Tests
+## Running Tests
 
 ### Prerequisites
 
-1. AWS credentials configured (via `aws configure` or environment variables)
-2. Pulumi CLI installed
-3. For Pinecone tests: `PINECONE_API_KEY` environment variable set
+- AWS credentials configured
+- Pulumi CLI installed
+- Integration tests run against the stack specified by `PULUMI_STACK_NAME` environment variable (defaults to `staging`)
 
 ### Commands
 
 ```bash
-# Run all integration tests
+# All integration tests
 npm run test:integration
 
-# Run only OpenSearch infrastructure tests
+# Specific test suites
 npm run test:integration -- --grep "Infrastructure Integration Tests"
+npm run test:integration -- --grep "Query Lambda Integration"
 
-# Run only Pinecone tests (requires PINECONE_API_KEY)
-npm run test:integration -- --grep "Pinecone Integration Tests"
-
-# Run only document processing tests
-npm run test:integration -- --grep "Document Processing Integration Tests"
-
-# Run unit tests separately
-npm run test:unit
-
-# Run all tests (unit + integration)
-npm run test:all
+# Debug mode
+PULUMI_LOG_LEVEL=debug npm run test:integration
 ```
 
-### Test Timeouts
+## Test Coverage
 
-Integration tests have a 10-minute timeout to allow for infrastructure deployment and cleanup.
+### ✅ Core Infrastructure
 
-## What Gets Tested
+- Pipeline outputs validation (bucket name, API endpoint)
+- S3 bucket creation and accessibility
 
-### Infrastructure Tests
-- ✅ All required resources are deployed
-- ✅ S3 bucket is created and accessible
-- ✅ Lambda functions are configured correctly
-- ✅ IAM roles have proper permissions
-- ✅ OpenSearch serverless collection is created
-- ✅ S3 bucket notifications are configured
-- ✅ API Gateway is properly set up
+### ✅ Ingestion Lambda Configuration
 
-### Conditional Inline IAM Policy Tests
-- ✅ OpenSearch permissions are included in inline policies when vectorStoreType = "opensearch"
-- ✅ Base permissions (logs, bedrock, ECR) are always included in inline policies
-- ✅ Inline policy structure is correct and secure
+- IAM inline policy permissions validation
+- Lambda function health state verification
+- Environment variables configuration
+- S3 bucket notification setup
+- Lambda invoke permissions for S3
 
-### Pinecone Configuration Tests
-- ✅ Pinecone is configured when vectorStoreType = "pinecone"
-- ✅ OpenSearch permissions are NOT included in inline policies for Pinecone
-- ✅ Pinecone endpoint format is correct
-- ✅ Inline policy has fewer statements than OpenSearch (no aoss permissions)
+### ✅ Query Lambda Configuration
 
-### Document Processing Tests
-- ✅ End-to-end document upload and processing
-- ✅ Lambda function trigger verification
-- ✅ CloudWatch log analysis for processing success
-- ✅ Concurrent document processing
-- ✅ Lambda function health checks
-- ✅ Environment variable validation
-- ✅ Error handling for invalid files
+- IAM inline policy permissions validation
+- Lambda function health state verification
+- Environment variables configuration
 
-## Test Environment
+### ✅ API Gateway Configuration
 
-- **AWS Region**: us-west-2
-- **Stack Name**: `integration-test` (for OpenSearch), `pinecone-integration-test` (for Pinecone)
-- **Timeout**: 600 seconds (10 minutes)
-- **Cleanup**: Automatic after tests complete
+- API Gateway creation and endpoint validation
+- Lambda invoke permissions for API Gateway
+- AWS_PROXY integration with Lambda
+- POST /query route configuration
+- HTTP API response validation
 
-## CI/CD Integration
+### ✅ Lambda Integration Tests
 
-The tests are integrated into GitHub Actions:
+- **Ingestion**: S3 event processing and CloudWatch logs
+- **Query**: API Gateway invocation with log validation and JSON parsing
 
-- **Unit tests**: Run on every push/PR
-- **Integration tests**: Run on pushes to main branch only
-- **Security**: Dependency auditing and security scanning
+## Environment
 
-## Cost Considerations
-
-Integration tests deploy real AWS resources:
-
-- OpenSearch Serverless collection (pay-per-use)
-- Lambda functions (free tier eligible)
-- S3 bucket (minimal cost)
-- API Gateway (pay-per-request)
-
-Tests clean up all resources after completion to minimize costs.
+- **Region**: us-east-1
+- **Stack**: `staging` (shared with e2e tests)
+- **Timeout**: 10 minutes
+- **Auto-cleanup**: Yes
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Plugin Installation Errors**: Ensure Pulumi CLI is installed and accessible
-2. **AWS Permission Errors**: Verify AWS credentials have sufficient permissions
-3. **Timeout Errors**: Infrastructure deployment can take 5-10 minutes
-4. **Pinecone API Key**: Set `PINECONE_API_KEY` environment variable for Pinecone tests
-
-### Debug Mode
-
-Enable debug logging:
-
-```bash
-PULUMI_LOG_LEVEL=debug npm run test:integration
-```
+1. **Timeouts**: Infrastructure deployment takes 5-10 minutes
+2. **Permissions**: Ensure AWS credentials have admin access
+3. **Stack conflicts**: Use unique stack names if running parallel tests
 
 ### Manual Cleanup
 
-If tests fail and don't clean up:
-
 ```bash
-# List stacks
-pulumi stack ls
-
-# Destroy specific stack
-pulumi stack select integration-test
-pulumi destroy
-
-# Or for Pinecone tests
-pulumi stack select pinecone-integration-test
+pulumi stack select staging
 pulumi destroy
 ```
 
-## Development
-
-### Adding New Tests
-
-1. Create test file in `test/integration/`
-2. Import automation helpers
-3. Use `before()` hook for deployment
-4. Use `after()` hook for cleanup
-5. Add appropriate test timeouts
-
-### Test Structure
+## Adding Tests
 
 ```typescript
-describe("Your Integration Test", function() {
-    this.timeout(600000); // 10 minutes
+describe("New Integration Test", function() {
+    this.timeout(600000);
     
+    let awsHelper: AWSHelper;
     let outputs: { [key: string]: any };
     
     before(async function() {
-        outputs = await deploy();
+        const stack = await select();
+        outputs = await stack.outputs();
+        awsHelper = new AWSHelper({ region: "us-east-1" });
     });
     
     after(async function() {
-        await destroy();
+        await awsHelper.cleanup();
     });
     
-    it("should verify something", async () => {
+    it("should test something", async () => {
         // Test implementation
     });
 });
 ```
+
+## Cost Notes
+
+Tests deploy real AWS resources but auto-cleanup after completion. Estimated cost per test run: < $0.01.

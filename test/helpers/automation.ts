@@ -2,7 +2,7 @@ import { LocalWorkspace } from "@pulumi/pulumi/automation/index.js";
 import * as path from "path";
 import { fileURLToPath } from "url";
 
-const stackName = "staging";
+const stackName = process.env.PULUMI_STACK_NAME || "staging";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workDir = path.join(__dirname, "../..");
 
