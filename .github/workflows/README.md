@@ -33,7 +33,8 @@ graph TD
         PUSH[Push to Main] --> QT
         QT --> DS[Deploy Staging]
         DS --> E2E[Integration & E2E Tests]
-        E2E --> DP[Deploy Production<br/>Manual Approval]
+        E2E --> APPROVAL[Manual Approval<br/>Production Gate]
+        APPROVAL --> DP[Deploy Production]
     end
     
     subgraph "Manual Deployment"
@@ -44,6 +45,7 @@ graph TD
     style QT fill:#1976d2,color:#fff
     style IT fill:#f57c00,color:#fff
     style E2E fill:#f57c00,color:#fff
+    style APPROVAL fill:#9c27b0,color:#fff
     style CL fill:#d32f2f,color:#fff
     style DP fill:#388e3c,color:#fff
 ```
@@ -56,11 +58,14 @@ graph TD
 
 **Testing**: Unit tests → Integration tests (real AWS) → E2E tests (full pipeline).
 
+**Approval Gate**: Manual approval required before production deployment with pre-deployment summary.
+
 ## ⚙️ Setup
 
 1. Configure OIDC authentication (see `.pulumi/OIDC-SETUP.md`)
-2. Create GitHub environments: `pr-testing`, `staging`, `production`
-3. Set repository variable: `PULUMI_ORGANIZATION`
+2. Create GitHub environments: `pr-testing`, `staging`, `production`, `production-approval`
+3. Configure `production-approval` environment with required reviewers  
+4. Set repository variable: `PULUMI_ORGANIZATION`
 
 ## 🐛 Troubleshooting
 
