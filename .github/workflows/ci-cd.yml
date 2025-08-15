@@ -25,13 +25,8 @@ on:
 env:
   NODE_VERSION: 23
   PULUMI_ORGANIZATION: initech
-  # OIDC authentication replaces PULUMI_ACCESS_TOKEN
-  # AWS credentials will be injected via ESC
 
 jobs:
-  # =============================================================================
-  # QUALITY CHECKS - Always run first
-  # =============================================================================
   quality_checks:
     name: Code Quality & Security
     runs-on: ubuntu-latest
@@ -85,9 +80,6 @@ jobs:
       #     head: HEAD
       #     extra_args: --debug --only-verified
 
-  # =============================================================================
-  # UNIT TESTS - Fast feedback loop
-  # =============================================================================
   unit_tests:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -164,9 +156,6 @@ jobs:
           comment-on-pr: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  # =============================================================================
-  # INTEGRATION TESTS - PR Environment
-  # =============================================================================
   integration_tests_pr:
     name: Integration Tests (PR)
     runs-on: ubuntu-latest
@@ -232,14 +221,17 @@ jobs:
         run: sleep 30
 
       - name: Run integration tests
-        run: pnpm run test:integration -- --reporter mocha-ctrf-json-reporter
+        id: run_integration_tests_pr
+        run: |
+          pnpm run test:integration -- --reporter mocha-ctrf-json-reporter
+          echo "::set-output name=should_run::true" 
         timeout-minutes: 15
         env:
           PULUMI_STACK_NAME: pr-${{ github.event.number }}
 
       - name: Publish Integration Test Summary Results
         dependencies: Run integration tests
-        if: always()
+        if: steps.run_integration_tests_pr.outputs.should_run == 'true'
         run: npx github-actions-ctrf ctrf/ctrf-report.json --pr-comment true --title "Integration Tests Results for PR #${{ github.event.number }}" 
 
       - name: Destroy ephemeral stack
@@ -251,9 +243,6 @@ jobs:
           comment-on-pr: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  # =============================================================================
-  # STAGING DEPLOYMENT - Main branch pushes
-  # =============================================================================
   deploy_staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
@@ -297,9 +286,6 @@ jobs:
           stack-name: staging
           comment-on-pr: false
 
-  # =============================================================================
-  # END-TO-END TESTS - Staging environment
-  # =============================================================================
   e2e_tests_staging:
     name: Integration and E2E Tests (Staging)
     runs-on: ubuntu-latest
@@ -339,32 +325,33 @@ jobs:
           environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/staging
 
       - name: Run integration tests against staging
-        run: esc run aws-rag-pipeline/staging -i pnpm run test:integration -- --reporter mocha-ctrf-json-reporter 
+        id: run_integration_tests_staging
+        run: |
+          esc run aws-rag-pipeline/staging -i pnpm run test:integration -- --reporter mocha-ctrf-json-reporter
+          echo "::set-output name=should_run::true" 
         timeout-minutes: 20
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
           PULUMI_STACK_NAME: staging
 
       - name: Publish Test Summary Results (CTRF example)
-        dependencies: Run integration tests against staging
-        if: always()
-        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for Staging"
+        if: steps.run_integration_tests_staging.outputs.should_run == 'true'
+        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for Staging" &&
 
       - name: Run E2E tests against staging
-        run: esc run aws-rag-pipeline/staging -i pnpm run test:e2e -- --reporter mocha-ctrf-json-reporter 
+        id: run_e2e_tests_staging
+        run: |
+          esc run aws-rag-pipeline/staging -i pnpm run test:e2e -- --reporter mocha-ctrf-json-reporter
+          echo "::set-output name=should_run::true" 
         timeout-minutes: 20
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Publish Test Summary Results (CTRF example)
-        dependencies: Run E2E tests against staging
-        if: always()
+        if: steps.run_e2e_tests_staging.outputs.should_run == 'true'
         run: npx github-actions-ctrf ctrf/ctrf-report.json --title "E2E Tests Results for Staging"
 
 
-  # =============================================================================
-  # PRODUCTION DEPLOYMENT - Manual approval required
-  # =============================================================================
   deploy_production:
     name: Deploy to Production
     runs-on: ubuntu-latest
@@ -407,33 +394,7 @@ jobs:
           command: up
           stack-name: production
 
-      # - name: Health check production deployment
-      #   run: |
-      #     echo "Performing health checks on production environment..."
-      #     sleep 15
-      #     # Add custom health check commands here
 
-      # - name: Notify deployment success
-      #   if: success()
-      #   uses: 8398a7/action-slack@v3
-      #   with:
-      #     status: success
-      #     text: '🚀 AWS RAG Pipeline successfully deployed to production!'
-      #   env:
-      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-      # - name: Notify deployment failure
-      #   if: failure()
-      #   uses: 8398a7/action-slack@v3
-      #   with:
-      #     status: failure
-      #     text: '❌ AWS RAG Pipeline production deployment failed!'
-      #   env:
-      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-  # =============================================================================
-  # MANUAL WORKFLOW DISPATCH
-  # =============================================================================
   manual_deployment:
     name: Manual Deployment
     runs-on: ubuntu-latest
