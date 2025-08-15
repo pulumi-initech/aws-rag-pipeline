@@ -34,7 +34,7 @@
         "@typescript-eslint/eslint-plugin": "^8.38.0",
         "@typescript-eslint/parser": "^8.38.0",
         "chai": "^4.3.10",
-        "eslint": "^9.31.0",
+        "eslint": "^9.33.0",
         "github-actions-ctrf": "^0.0.58",
         "mocha": "^10.2.0",
         "mocha-ctrf-json-reporter": "^0.0.9",
