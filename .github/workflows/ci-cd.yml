@@ -236,23 +236,12 @@ jobs:
           organization: ${{ env.PULUMI_ORGANIZATION }}
           requested-token-type: urn:pulumi:token-type:access_token:organization
 
-      - name: Setup ESC and inject credentials
-        uses: pulumi/esc-action@v1
-        with:
-          environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline-staging
-
       - name: Deploy to staging
         uses: pulumi/actions@v5
         with:
           command: up
           stack-name: staging
           comment-on-pr: false
-
-      - name: Health check staging deployment
-        run: |
-          echo "Performing health checks on staging environment..."
-          sleep 10
-          # Add custom health check commands here
 
   # =============================================================================
   # END-TO-END TESTS - Staging environment
