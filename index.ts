@@ -20,7 +20,7 @@ const vectorStore = new VectorStore("vector-store", {
 const ingestion = new Ingestion("ingestion", {
     inputBucket: inputBucket.bucket,
     vectorStoreConfig: vectorStore.config,
-});
+}, { dependsOn: [inputBucket, vectorStore] });
 
 // Create query service
 const query = new Query("query", {
@@ -29,14 +29,14 @@ const query = new Query("query", {
         APIKey: pineconeConfig.get("APIKey") || "",
         Environment: pineconeConfig.get("Environment") || "us-east-1-aws",
     } : undefined,
-});
+}, { dependsOn: [vectorStore]});
 
 // Create ServerlessAccessPolicy if using OpenSearch
 if (vectorStoreType === "opensearch") {
     new ServerlessAccessPolicy("opensearch-access", {
         collectionName: vectorStore.config.collectionName || "rag-collection",
         lambdaRoleArns: [ingestion.role.arn, query.role.arn]
-    });
+    }, { dependsOn: [vectorStore, ingestion, query] });
 }
 
 // Export outputs

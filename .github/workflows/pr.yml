@@ -1,0 +1,150 @@
+name: AWS RAG Pipeline CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+
+env:
+  NODE_VERSION: 23
+  PULUMI_ORGANIZATION: initech
+
+jobs:
+  quality_and_tests:
+    name: Quality Checks and Unit Tests
+    uses: ./.github/workflows/quality-and-tests.yml
+    with:
+      node-version: 23
+
+  preview_pr:
+    name: Preview Changes (PR)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [quality_and_tests]
+    environment: pr-testing
+    concurrency:
+      group: pr-${{ github.event.number }}
+      cancel-in-progress: true
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Authenticate with Pulumi
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: ${{ env.PULUMI_ORGANIZATION }}
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+
+      - name: Preview Changes
+        uses: pulumi/actions@v5
+        with:
+          command: preview
+          stack-name: production
+          upsert: true
+          comment-on-pr: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  integration_tests_pr:
+    name: Integration Tests (PR)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [preview_pr]
+    environment: pr-testing
+    concurrency:
+      group: pr-${{ github.event.number }}
+      cancel-in-progress: true
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Authenticate with Pulumi
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: ${{ env.PULUMI_ORGANIZATION }}
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+
+      - name: Create PR stack configuration
+        run: |
+          cat > Pulumi.pr-${{ github.event.number }}.yaml << EOF
+          environment: 
+            - aws-rag-pipeline/pr
+          config:
+            aws-rag-pipeline:collectionName: rag-pr-${{ github.event.number }}
+          EOF
+
+      - name: Deploy ephemeral stack
+        uses: pulumi/actions@v5
+        with:
+          command: up
+          stack-name: pr-${{ github.event.number }}
+          upsert: true
+          comment-on-pr: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for infrastructure to stabilize
+        run: sleep 30
+
+      - name: Setup ESC and inject credentials
+        uses: pulumi/esc-action@v1
+        with:
+          environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/pr
+
+      - name: Run integration tests
+        run: pnpm run test:integration -- --reporter mocha-ctrf-json-reporter
+        timeout-minutes: 15
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          PULUMI_STACK_NAME: pr-${{ github.event.number }}
+
+      - name: Publish Integration Test Summary Results
+        if: always()
+        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for PR"
+
+      # - name: Destroy ephemeral stack
+      #   if: always()
+      #   uses: pulumi/actions@v5
+      #   with:
+      #     command: destroy
+      #     stack-name: pr-${{ github.event.number }}
+      #     comment-on-pr: false
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}

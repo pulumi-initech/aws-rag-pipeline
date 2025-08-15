@@ -1,0 +1,214 @@
+name: AWS RAG Pipeline CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: 23
+
+jobs:
+  quality_and_tests:
+    name: Quality Checks and Unit Tests
+    uses: ./.github/workflows/quality-and-tests.yml
+    with:
+      node-version: ${{ env.NODE_VERSION }}
+
+  deploy_staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [quality_and_tests]
+    environment: 
+      name: staging
+      url: https://app.pulumi.com/initech/aws-rag-pipeline/staging
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Authenticate with Pulumi
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: ${{ env.PULUMI_ORGANIZATION }}
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+
+      - name: Deploy to staging
+        uses: pulumi/actions@v5
+        with:
+          command: up
+          stack-name: staging
+          comment-on-pr: false
+
+  e2e_tests_staging:
+    name: Integration and E2E Tests (Staging)
+    runs-on: ubuntu-latest
+    needs: deploy_staging
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Authenticate with Pulumi
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: ${{ env.PULUMI_ORGANIZATION }}
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+
+      - name: Setup ESC and inject credentials
+        uses: pulumi/esc-action@v1
+        with:
+          environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/staging
+
+      - name: Run integration tests against staging
+        run: |
+          esc run aws-rag-pipeline/staging -i pnpm run test:integration -- --reporter mocha-ctrf-json-reporter
+        timeout-minutes: 20
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          PULUMI_STACK_NAME: staging
+
+      - name: Publish Test Summary Results (CTRF example)
+        if: always()
+        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for Staging" &&
+
+      - name: Run E2E tests against staging
+        run: |
+          esc run aws-rag-pipeline/staging -i pnpm run test:e2e -- --reporter mocha-ctrf-json-reporter
+        timeout-minutes: 20
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+      - name: Publish Test Summary Results (CTRF example)
+        if: always()
+        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "E2E Tests Results for Staging"
+
+
+  deploy_production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: e2e_tests_staging
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: 
+      name: production
+      url: https://app.pulumi.com/initech/aws-rag-pipeline/production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Authenticate with Pulumi
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: ${{ env.PULUMI_ORGANIZATION }}
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+
+      - name: Deploy to production
+        uses: pulumi/actions@v5
+        with:
+          command: up
+          stack-name: production
+
+  manual_deployment:
+    name: Manual Deployment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Authenticate with Pulumi
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: ${{ env.PULUMI_ORGANIZATION }}
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+
+      - name: Deploy to ${{ github.event.inputs.environment }}
+        uses: pulumi/actions@v5
+        with:
+          command: up
+          stack-name: ${{ github.event.inputs.environment }}
