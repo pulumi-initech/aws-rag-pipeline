@@ -207,7 +207,7 @@ jobs:
     needs: [quality_checks, unit_tests]
     environment: 
       name: staging
-      url: https://staging.example.com
+      url: https://app.pulumi.com/initech/aws-rag-pipeline/staging
     permissions:
       id-token: write
       contents: read
@@ -270,10 +270,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Setup ESC (Environment, Secrets, and Configuration)
+      - name: Setup ESC and inject credentials
         uses: pulumi/esc-action@v1
         with:
-          version: latest
+          environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/staging
 
       - name: Run E2E tests against staging
         run: esc run aws-rag-pipeline/staging -i pnpm run test:e2e
@@ -281,15 +281,15 @@ jobs:
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
-      - name: Upload E2E test artifacts
-        if: failure()
-        uses: actions/upload-artifact@v3
-        with:
-          name: e2e-test-results
-          path: |
-            test-results/
-            logs/
-          retention-days: 7
+      # - name: Upload E2E test artifacts
+      #   if: failure()
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: e2e-test-results
+      #     path: |
+      #       test-results/
+      #       logs/
+      #     retention-days: 7
 
   # =============================================================================
   # PRODUCTION DEPLOYMENT - Manual approval required
@@ -301,7 +301,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: 
       name: production
-      url: https://production.example.com
+      url: https://app.pulumi.com/initech/aws-rag-pipeline/production
     permissions:
       id-token: write
       contents: read
