@@ -5,7 +5,7 @@ This directory contains integration tests that deploy actual infrastructure usin
 ## Test Structure
 
 - `automation.ts` - Helper functions for deploying and managing Pulumi stacks
-- `infrastructure.integration.test.ts` - Tests for OpenSearch configuration and conditional IAM policies
+- `infrastructure.integration.test.ts` - Tests for OpenSearch configuration and conditional inline IAM policies
 - `pinecone.integration.test.ts` - Tests for Pinecone configuration (requires API key)
 - `document-processing.integration.test.ts` - End-to-end document processing tests with CloudWatch log verification
 
@@ -54,16 +54,16 @@ Integration tests have a 10-minute timeout to allow for infrastructure deploymen
 - ✅ S3 bucket notifications are configured
 - ✅ API Gateway is properly set up
 
-### Conditional IAM Policy Tests
-- ✅ OpenSearch permissions are included when vectorStoreType = "opensearch"
-- ✅ Base permissions (logs, bedrock) are always included
-- ✅ Policy structure is correct and secure
+### Conditional Inline IAM Policy Tests
+- ✅ OpenSearch permissions are included in inline policies when vectorStoreType = "opensearch"
+- ✅ Base permissions (logs, bedrock, ECR) are always included in inline policies
+- ✅ Inline policy structure is correct and secure
 
 ### Pinecone Configuration Tests
 - ✅ Pinecone is configured when vectorStoreType = "pinecone"
-- ✅ OpenSearch permissions are NOT included for Pinecone
+- ✅ OpenSearch permissions are NOT included in inline policies for Pinecone
 - ✅ Pinecone endpoint format is correct
-- ✅ Policy has fewer statements than OpenSearch (no aoss permissions)
+- ✅ Inline policy has fewer statements than OpenSearch (no aoss permissions)
 
 ### Document Processing Tests
 - ✅ End-to-end document upload and processing

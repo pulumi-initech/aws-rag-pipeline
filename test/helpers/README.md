@@ -8,7 +8,7 @@ The test helpers provide clean, consistent APIs for:
 
 - **AWS Client Management**: Centralized initialization of S3, Lambda, IAM, CloudWatch Logs, and API Gateway clients
 - **Resource Operations**: Interact with Lambda functions, IAM roles, S3 buckets, and API Gateway resources
-- **Policy Analysis**: Parse and analyze IAM policies for specific permissions
+- **Inline Policy Analysis**: Parse and analyze IAM inline policies for specific permissions
 - **Log Analysis**: Retrieve and analyze CloudWatch logs for processing evidence
 - **Test Utilities**: Common operations like waiting, validation, and test data generation
 - **Vector Store Operations**: OpenSearch index management and document counting
@@ -39,15 +39,15 @@ const permissions = await awsHelper.getLambdaResourcePolicy("function-name");
 console.log(permissions.length);
 ```
 
-### 2. IAM Policy Analysis
+### 2. IAM Inline Policy Analysis
 
 ```typescript
-// Get IAM role and analyze policies
+// Get IAM role and analyze inline policies
 const role = await awsHelper.getIAMRole("role-name");
 const policyNames = await awsHelper.listRolePolicies("role-name");
 const policy = await awsHelper.getRolePolicy("role-name", policyNames[0]);
 
-// Analyze policy permissions
+// Analyze inline policy permissions
 const policyAnalysis = TestUtils.analyzePolicyPermissions(policy);
 console.log(policyAnalysis.hasOpenSearchPermissions);
 console.log(policyAnalysis.hasLoggingPermissions);
@@ -189,7 +189,7 @@ console.log(`Index contains ${count} documents`);
 | `generateTestFileName(prefix, extension?)` | Generate unique test file names |
 | `createTestDocumentContent(title, content?)` | Create structured test content |
 | `bucketExists(buckets, bucketName)` | Check if bucket exists in list |
-| `analyzePolicyPermissions(policy)` | Analyze IAM policy for permissions |
+| `analyzePolicyPermissions(policy)` | Analyze IAM inline policy for permissions |
 | `findResourceByNamePattern(resources, field, pattern)` | Find resource by pattern |
 | `findRoleByRoleName(roles, roleName)` | Find IAM role by name pattern |
 
@@ -308,17 +308,17 @@ describe("Pipeline Integration Test", () => {
 });
 ```
 
-### Policy Validation Test
+### Inline Policy Validation Test
 
 ```typescript
 it("should have correct IAM permissions", async () => {
     const roleName = "my-lambda-role";
     
-    // Get role policy
+    // Get role inline policy
     const policyNames = await awsHelper.listRolePolicies(roleName);
     const policy = await awsHelper.getRolePolicy(roleName, policyNames[0]);
     
-    // Analyze permissions
+    // Analyze inline policy permissions
     const analysis = TestUtils.analyzePolicyPermissions(policy);
     expect(analysis.hasOpenSearchPermissions).toBe(true);
     expect(analysis.hasBedrockPermissions).toBe(true);

@@ -111,13 +111,13 @@ This project creates a complete RAG pipeline with:
 - **S3 Integration**: Listens for object creation events
 - **Containerized Lambda**: Python-based function using LangChain for document processing
 - **Embedding Generation**: Uses AWS Bedrock Titan embeddings model
-- **Conditional IAM**: Only includes OpenSearch permissions when using OpenSearch
+- **Conditional Inline IAM**: Only includes OpenSearch permissions in inline policy when using OpenSearch
 
 ### Query Component
 - **API Gateway**: HTTP API for query endpoint
 - **Containerized Lambda**: Python-based function using LangChain for semantic search
 - **RAG Chain**: Implements RetrievalQA chain with custom prompts
-- **Conditional IAM**: Only includes OpenSearch permissions when using OpenSearch
+- **Conditional Inline IAM**: Only includes OpenSearch permissions in inline policy when using OpenSearch
 
 ## Configuration
 
@@ -130,10 +130,13 @@ This project creates a complete RAG pipeline with:
 ## Security Features
 
 ### Conditional IAM Policies
-The pipeline implements conditional IAM policies that only grant permissions based on the vector store type:
+The pipeline implements conditional inline IAM policies that only grant permissions based on the vector store type:
 
-- **OpenSearch**: Includes `aoss:APIAccessAll` permissions
-- **Pinecone**: Excludes OpenSearch permissions entirely
+- **OpenSearch**: Includes `aoss:APIAccessAll` permissions in the inline policy
+- **Pinecone**: Excludes OpenSearch permissions entirely from the inline policy
+- **All configurations**: Include base permissions for CloudWatch logging, Bedrock model invocation, and ECR access
+
+All policies are defined as inline policies on the Lambda execution roles, providing better encapsulation and easier management compared to separate managed policies.
 
 This follows the principle of least privilege, ensuring components only have access to the resources they actually use.
 
@@ -176,7 +179,7 @@ pnpm run test:all
 **Integration Tests** (deploys real infrastructure):
 - ✅ Full infrastructure deployment
 - ✅ AWS resource creation and configuration
-- ✅ Conditional IAM policies in real AWS environment
+- ✅ Conditional inline IAM policies in real AWS environment
 - ✅ OpenSearch Serverless collection setup
 - ✅ S3 bucket notifications with Lambda triggers
 - ✅ API Gateway endpoint accessibility
