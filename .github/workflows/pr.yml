@@ -103,8 +103,6 @@ jobs:
           organization: ${{ env.PULUMI_ORGANIZATION }}
           requested-token-type: urn:pulumi:token-type:access_token:organization
 
-
-
       - name: Create PR stack configuration
         run: |
           cat > Pulumi.pr-${{ github.event.number }}.yaml << EOF
@@ -140,7 +138,7 @@ jobs:
 
       - name: Publish Integration Test Summary Results
         if: always()
-        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for PR #${{ github.event.number }}" 
+        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for PR"
 
       # - name: Destroy ephemeral stack
       #   if: always()
