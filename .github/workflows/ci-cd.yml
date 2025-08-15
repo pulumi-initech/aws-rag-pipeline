@@ -1,11 +1,6 @@
 name: AWS RAG Pipeline CI/CD
 
 on:
-  pull_request:
-    branches: [main]
-    paths-ignore:
-      - '*.md'
-      - 'docs/**'
   push:
     branches: [main]
     paths-ignore:
@@ -109,139 +104,6 @@ jobs:
       - name: Publish Test Summary Results (CTRF example)
         run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Unit Tests Results"
 
-  preview_pr:
-    name: Preview Changes (PR)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    needs: [quality_checks, unit_tests]
-    environment: pr-testing
-    concurrency:
-      group: pr-${{ github.event.number }}
-      cancel-in-progress: true
-    permissions:
-      id-token: write
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          version: 10
-          run_install: false
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version:  ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Authenticate with Pulumi
-        uses: pulumi/auth-actions@v1
-        with:
-          organization: ${{ env.PULUMI_ORGANIZATION }}
-          requested-token-type: urn:pulumi:token-type:access_token:organization
-
-      - name: Preview Changes
-        uses: pulumi/actions@v5
-        with:
-          command: preview
-          stack-name: production
-          upsert: true
-          comment-on-pr: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-  integration_tests_pr:
-    name: Integration Tests (PR)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    needs: [quality_checks, unit_tests]
-    environment: pr-testing
-    concurrency:
-      group: pr-${{ github.event.number }}
-      cancel-in-progress: true
-    permissions:
-      id-token: write
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          version: 10
-          run_install: false
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version:  ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Authenticate with Pulumi
-        uses: pulumi/auth-actions@v1
-        with:
-          organization: ${{ env.PULUMI_ORGANIZATION }}
-          requested-token-type: urn:pulumi:token-type:access_token:organization
-
-      - name: Setup ESC and inject credentials
-        uses: pulumi/esc-action@v1
-        with:
-          environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/pr
-
-      - name: Create PR stack configuration
-        run: |
-          cat > Pulumi.pr-${{ github.event.number }}.yaml << EOF
-          environment: 
-            - aws-rag-pipeline/pr
-          config:
-            aws-rag-pipeline:collectionName: rag-pr-${{ github.event.number }}
-          EOF
-
-      - name: Deploy ephemeral stack
-        uses: pulumi/actions@v5
-        with:
-          command: up
-          stack-name: pr-${{ github.event.number }}
-          upsert: true
-          comment-on-pr: false
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Wait for infrastructure to stabilize
-        run: sleep 30
-
-      - name: Run integration tests
-        id: run_integration_tests_pr
-        run: |
-          pnpm run test:integration -- --reporter mocha-ctrf-json-reporter
-          echo "::set-output name=should_run::true" 
-        timeout-minutes: 15
-        env:
-          PULUMI_STACK_NAME: pr-${{ github.event.number }}
-
-      - name: Publish Integration Test Summary Results
-        if: steps.run_integration_tests_pr.outputs.should_run == 'true'
-        run: npx github-actions-ctrf ctrf/ctrf-report.json --pr-comment true --title "Integration Tests Results for PR #${{ github.event.number }}" 
-
-      - name: Destroy ephemeral stack
-        if: always()
-        uses: pulumi/actions@v5
-        with:
-          command: destroy
-          stack-name: pr-${{ github.event.number }}
-          comment-on-pr: false
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
   deploy_staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
@@ -324,30 +186,26 @@ jobs:
           environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/staging
 
       - name: Run integration tests against staging
-        id: run_integration_tests_staging
         run: |
           esc run aws-rag-pipeline/staging -i pnpm run test:integration -- --reporter mocha-ctrf-json-reporter
-          echo "::set-output name=should_run::true" 
         timeout-minutes: 20
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
           PULUMI_STACK_NAME: staging
 
       - name: Publish Test Summary Results (CTRF example)
-        if: steps.run_integration_tests_staging.outputs.should_run == 'true'
+        if: always()
         run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for Staging" &&
 
       - name: Run E2E tests against staging
-        id: run_e2e_tests_staging
         run: |
           esc run aws-rag-pipeline/staging -i pnpm run test:e2e -- --reporter mocha-ctrf-json-reporter
-          echo "::set-output name=should_run::true" 
         timeout-minutes: 20
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Publish Test Summary Results (CTRF example)
-        if: steps.run_e2e_tests_staging.outputs.should_run == 'true'
+        if: always()
         run: npx github-actions-ctrf ctrf/ctrf-report.json --title "E2E Tests Results for Staging"
 
 
@@ -392,7 +250,6 @@ jobs:
         with:
           command: up
           stack-name: production
-
 
   manual_deployment:
     name: Manual Deployment
