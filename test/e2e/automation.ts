@@ -42,15 +42,15 @@ export async function replaceResource(stack: Stack, resourceUrn: string) {
 /**
  * Get all resource URNs from the stack
  */
-export async function getResourceUrns(stack: Stack): Promise<string[]> {
+export async function getResourceUrns(_stack: Stack): Promise<string[]> {
     throw("Not implemented yet");
 }
 
 /**
  * Find resource URN by type and name pattern
  */
-export async function findResourceUrn(stack: Stack, resourceType: string, namePattern?: string): Promise<string | undefined> {
-    const urns = await getResourceUrns(stack);
+export async function findResourceUrn(_stack: Stack, resourceType: string, namePattern?: string): Promise<string | undefined> {
+    const urns = await getResourceUrns(_stack);
     
     return urns.find(urn => {
         const matchesType = urn.includes(`::${resourceType}::`);

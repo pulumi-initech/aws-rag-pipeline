@@ -4,6 +4,7 @@ import { SecureBucket, VectorStore, Ingestion, Query, ServerlessAccessPolicy } f
 // Read configuration
 const config = new pulumi.Config();
 const vectorStoreType = config.get("vectorStore") || "opensearch";
+const pineconeConfig = vectorStoreType === "pinecone" ? new pulumi.Config("pinecone") : undefined;
 
 // Create secure input bucket
 const inputBucket = new SecureBucket("input");
@@ -23,6 +24,10 @@ const ingestion = new Ingestion("ingestion", {
 // Create query service
 const query = new Query("query", {
     vectorStoreConfig: vectorStore.config,
+    pineconeConfig: vectorStoreType === "pinecone" && pineconeConfig ? {
+        APIKey: pineconeConfig.get("APIKey") || "",
+        Environment: pineconeConfig.get("Environment") || "us-east-1-aws",
+    } : undefined,
 });
 
 // Create ServerlessAccessPolicy if using OpenSearch
@@ -37,5 +42,6 @@ if (vectorStoreType === "opensearch") {
 export const inputBucketName = inputBucket.bucketName;
 export const ingestionLambdaArn = ingestion.lambdaArn;
 export const queryLambdaArn = query.lambdaArn;
+export const queryApiName = query.apiName;
 export const queryApiEndpoint = query.apiEndpoint;
 export const indexName = vectorStore.config.collectionName || vectorStore.config.indexName;

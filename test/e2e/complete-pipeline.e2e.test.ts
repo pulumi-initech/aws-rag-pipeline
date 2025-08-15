@@ -2,34 +2,7 @@ import "mocha";
 import { expect } from "chai";
 import { select } from "./automation.ts";
 import { AWSHelper } from "../helpers/AWSHelper.ts";
-import { TestUtils } from "../helpers/TestUtils.ts";
-
-// Use native fetch for Node.js 18+
-// @ts-ignore - globalThis.fetch is available in Node.js 18+
-const fetch = globalThis.fetch;
-
-// Helper function to query the API
-async function queryAPI(apiEndpoint: string, query: string): Promise<{success: boolean, data?: any, error?: string}> {
-    try {
-        const response = await fetch(`${apiEndpoint}/query`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ query })
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            return { success: true, data };
-        } else {
-            const errorText = await response.text();
-            return { success: false, error: `HTTP ${response.status}: ${errorText}` };
-        }
-    } catch (error) {
-        return { success: false, error: `Network error: ${error}` };
-    }
-}
+import { queryAPI, TestUtils } from "../helpers/TestUtils.ts";
 
 describe("Complete RAG Pipeline E2E Tests", function() {
 
@@ -52,7 +25,7 @@ describe("Complete RAG Pipeline E2E Tests", function() {
         let bucketName: string;
         let documentFileName: string;
         let indexName: string;
-        let logMessages: string[] = [];
+        const logMessages: string[] = [];
         let apiEndpoint: string;
         before(async function() {
 
@@ -267,11 +240,11 @@ Keywords: artificial intelligence, healthcare, machine learning, medical AI, dia
     });
 
     describe("Multiple Document Handling", () => {
-        let bucketName: string;
-        let documentFileName: string;
-        let indexName: string;
-        let logMessages: string[] = [];
-        let apiEndpoint: string;
+        const _bucketName: string = outputs.inputBucketName.value;
+        const _documentFileName: string = TestUtils.generateTestFileName("multi-doc");
+        const _indexName: string = outputs.indexName.value;
+        const _logMessages: string[] = [];
+        const _apiEndpoint: string = outputs.queryApiEndpoint.value;
 
         before(async function() {
 

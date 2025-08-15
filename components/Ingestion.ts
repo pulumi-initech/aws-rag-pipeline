@@ -34,6 +34,7 @@ export class Ingestion extends pulumi.ComponentResource {
         // Create IAM role with combined policies
         this.role = new aws.iam.Role(`ingestion-lambda-role`, {
             assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({ Service: "lambda.amazonaws.com" }),
+            path: "/aws-rag-pipeline/",
         }, { parent: this });
 
         this.roleArn = this.role.arn;

@@ -1,180 +1,256 @@
-# AWS Test Helper
+# Test Helpers
 
-A comprehensive helper class for AWS SDK operations in integration and E2E tests.
+Comprehensive helper classes for AWS operations and test utilities in integration and E2E tests.
 
 ## Overview
 
-The `AWSTestHelper` class encapsulates common AWS SDK patterns found across integration tests, providing a clean, consistent API for:
+The test helpers provide clean, consistent APIs for:
 
-- **AWS Client Management**: Centralized initialization of S3, Lambda, IAM, and CloudWatch Logs clients
-- **Resource Discovery**: Find Lambda functions, IAM roles, and S3 buckets by name patterns
+- **AWS Client Management**: Centralized initialization of S3, Lambda, IAM, CloudWatch Logs, and API Gateway clients
+- **Resource Operations**: Interact with Lambda functions, IAM roles, S3 buckets, and API Gateway resources
 - **Policy Analysis**: Parse and analyze IAM policies for specific permissions
 - **Log Analysis**: Retrieve and analyze CloudWatch logs for processing evidence
-- **S3 Operations**: Upload, verify, and manage S3 objects
-- **Utility Functions**: Common operations like waiting, validation, and test data generation
+- **Test Utilities**: Common operations like waiting, validation, and test data generation
+- **Vector Store Operations**: OpenSearch index management and document counting
 
 ## Quick Start
 
 ```typescript
-import { AWSTestHelper } from "../helpers/index.ts";
+import { AWSHelper, TestUtils, queryAPI } from "../helpers/index.ts";
 
 // Initialize with default configuration (us-west-2)
-const awsHelper = new AWSTestHelper();
+const awsHelper = new AWSHelper();
 
 // Or with custom configuration
-const awsHelper = new AWSTestHelper({ region: "us-east-1" });
+const awsHelper = new AWSHelper({ region: "us-east-1" });
 ```
 
 ## Core Features
 
-### 1. Resource Discovery
+### 1. Lambda Operations
 
 ```typescript
-// Find Lambda functions
-const functions = await awsHelper.findPipelineLambdaFunctions();
-console.log(functions.ingestion?.FunctionName);
-console.log(functions.query?.FunctionName);
+// Get Lambda function configuration by ARN
+const lambdaConfig = await awsHelper.getLambdaFunctionConfigurationByArn(lambdaArn);
+console.log(lambdaConfig?.FunctionName);
 
-// Find IAM roles
-const roles = await awsHelper.findPipelineIAMRoles();
-console.log(roles.ingestion?.RoleName);
-console.log(roles.query?.RoleName);
+// Get Lambda function permissions
+const permissions = await awsHelper.getLambdaResourcePolicy("function-name");
+console.log(permissions.length);
 ```
 
-### 2. Policy Analysis
+### 2. IAM Policy Analysis
 
 ```typescript
-// Analyze IAM role policies
-const policyAnalysis = await awsHelper.analyzeRolePolicy("my-role-name");
+// Get IAM role and analyze policies
+const role = await awsHelper.getIAMRole("role-name");
+const policyNames = await awsHelper.listRolePolicies("role-name");
+const policy = await awsHelper.getRolePolicy("role-name", policyNames[0]);
+
+// Analyze policy permissions
+const policyAnalysis = TestUtils.analyzePolicyPermissions(policy);
 console.log(policyAnalysis.hasOpenSearchPermissions);
 console.log(policyAnalysis.hasLoggingPermissions);
 console.log(policyAnalysis.hasBedrockPermissions);
-console.log(policyAnalysis.statementCount);
 ```
 
 ### 3. S3 Operations
 
 ```typescript
-// Upload single document
-await awsHelper.uploadDocument("my-bucket", "test.txt", "content");
+// List S3 buckets
+const buckets = await awsHelper.listS3Buckets();
+const bucketExists = TestUtils.bucketExists(buckets, "bucket-name");
 
-// Upload multiple documents concurrently
-await awsHelper.uploadDocuments("my-bucket", [
-    { name: "doc1.txt", content: "content 1" },
-    { name: "doc2.txt", content: "content 2" }
-]);
+// Upload object to S3
+await awsHelper.putS3Object("bucket-name", "key", "content", "text/plain");
 
-// Verify object exists
-const metadata = await awsHelper.verifyObject("my-bucket", "test.txt");
-console.log(metadata.ContentType);
+// Get bucket notification configuration
+const notification = await awsHelper.getS3BucketNotificationConfiguration("bucket-name");
 ```
 
-### 4. Log Analysis
+### 4. API Gateway Operations
 
 ```typescript
-// Get Lambda function logs
-const logs = await awsHelper.getLambdaLogs("my-function", {
-    searchTerm: "processing",
-    minutes: 5,
-    limit: 100
-});
+// Get API Gateway by name
+const api = await awsHelper.getApiGatewayByName("api-name");
 
-// Analyze logs for processing evidence
-const analysis = awsHelper.analyzeLogsForProcessing(logs, "test-file.txt");
-console.log(analysis.processingFound);
-console.log(analysis.successFound);
-console.log(analysis.errorFound);
+// List API Gateway routes and integrations
+const routes = await awsHelper.listApiGatewayRoutes(api.ApiId);
+const integrations = await awsHelper.listApiGatewayIntegrations(api.ApiId);
+
+// Query API endpoint
+const response = await queryAPI("https://api-endpoint.com", "test query");
+console.log(response.success);
 ```
 
-### 5. Pipeline Validation
+### 5. CloudWatch Logs
 
 ```typescript
-// Validate pipeline outputs
-const validation = awsHelper.validatePipelineOutputs(outputs, "opensearch");
-console.log(validation.hasInputBucketName);
-console.log(validation.correctVectorStoreType);
-console.log(validation.validEndpointFormat);
+// Get log streams and events
+const logStreams = await awsHelper.describeLogStreams("/aws/lambda/function-name");
+const logEvents = await awsHelper.getLogEvents("/aws/lambda/function-name", "stream-name");
+
+// Collect logs from multiple streams
+const logs = await TestUtils.collectLogsFromStreams(
+    awsHelper, 
+    "/aws/lambda/function-name", 
+    logStreams, 
+    { searchTerm: "processing", minutes: 5 }
+);
 ```
 
 ### 6. Test Utilities
 
 ```typescript
 // Generate unique test file names
-const fileName = awsHelper.generateTestFileName("integration-test");
+const fileName = TestUtils.generateTestFileName("integration-test");
 
 // Create structured test content
-const content = awsHelper.createTestDocumentContent(
+const content = TestUtils.createTestDocumentContent(
     "My Test Document",
     "Additional test content here"
 );
 
 // Wait for processing
-await awsHelper.waitForProcessing('medium'); // short, medium, long
+await TestUtils.waitForProcessing('medium'); // short, medium, long
+
+// Validate pipeline outputs
+const validation = TestUtils.validatePipelineOutputs(outputs, "opensearch");
+console.log(validation.hasInputBucketName);
+```
+
+### 7. OpenSearch Operations
+
+```typescript
+// Clear OpenSearch index
+await awsHelper.clearOpenSearchIndex("https://endpoint.aoss.amazonaws.com", "index-name");
+
+// Get document count from index
+const count = await awsHelper.getOpenSearchIndexDocumentCount("https://endpoint.aoss.amazonaws.com", "index-name");
+console.log(`Index contains ${count} documents`);
 ```
 
 ## Method Reference
 
-### Lambda Operations
+### AWSHelper - Lambda Operations
 
 | Method | Description |
 |--------|-------------|
-| `findLambdaFunctions(pattern)` | Find functions by name pattern |
-| `findPipelineLambdaFunctions()` | Find ingestion and query functions |
-| `getLambdaConfiguration(name)` | Get detailed function configuration |
-| `validateLambdaConfiguration(config, expected)` | Validate function configuration |
+| `getLambdaResourcePolicy(functionName)` | Get Lambda function resource-based policy |
+| `getLambdaFunctionConfigurationByArn(arn)` | Get Lambda configuration by ARN |
 
-### IAM Operations
+### AWSHelper - IAM Operations
 
 | Method | Description |
 |--------|-------------|
-| `findIAMRoles(pattern)` | Find roles by name pattern |
-| `findPipelineIAMRoles()` | Find ingestion and query roles |
-| `analyzeRolePolicy(roleName)` | Analyze role policy permissions |
+| `listIAMRoles()` | List all IAM roles |
+| `getIAMRole(roleName)` | Get specific IAM role |
+| `listRolePolicies(roleName)` | List inline policies for a role |
+| `getRolePolicy(roleName, policyName)` | Get inline policy document |
 
-### S3 Operations
-
-| Method | Description |
-|--------|-------------|
-| `bucketExists(name)` | Check if bucket exists |
-| `uploadDocument(bucket, key, content, type)` | Upload single document |
-| `uploadDocuments(bucket, docs)` | Upload multiple documents |
-| `verifyObject(bucket, key)` | Verify object exists and get metadata |
-| `getBucketNotificationConfiguration(bucket)` | Get notification config |
-
-### CloudWatch Logs Operations
+### AWSHelper - S3 Operations
 
 | Method | Description |
 |--------|-------------|
-| `getRecentLogs(logGroup, options)` | Get recent logs from log group |
-| `getLambdaLogs(functionName, options)` | Get Lambda function logs |
-| `analyzeLogsForProcessing(logs, fileName)` | Analyze logs for processing evidence |
+| `listS3Buckets()` | List all S3 buckets |
+| `bucketExists(bucketName)` | Check if S3 bucket exists (efficient) |
+| `putS3Object(bucket, key, body, contentType?)` | Upload object to S3 |
+| `getS3BucketNotificationConfiguration(bucket)` | Get bucket notification config |
 
-### Utility Methods
+### AWSHelper - API Gateway Operations
 
 | Method | Description |
 |--------|-------------|
-| `wait(milliseconds)` | Wait for specified duration |
-| `waitForProcessing(type)` | Wait with predefined timeouts |
-| `validatePipelineOutputs(outputs, type)` | Validate pipeline outputs |
-| `generateTestFileName(prefix, extension)` | Generate unique test file names |
-| `createTestDocumentContent(title, content)` | Create structured test content |
+| `getApiGatewayByName(name)` | Get API Gateway V2 API by name |
+| `listApiGatewayRoutes(apiId)` | List routes for API Gateway |
+| `listApiGatewayIntegrations(apiId)` | List integrations for API Gateway |
+
+### AWSHelper - CloudWatch Logs Operations
+
+| Method | Description |
+|--------|-------------|
+| `describeLogStreams(logGroup, options?)` | Get log streams in log group |
+| `getLogEvents(logGroup, stream, options?)` | Get events from log stream |
+
+### AWSHelper - OpenSearch Operations
+
+| Method | Description |
+|--------|-------------|
+| `clearOpenSearchIndex(endpoint, indexName)` | Clear all documents from index |
+| `listOpenSearchIndices(endpoint)` | List indices (limited in AOSS) |
+| `getOpenSearchIndexDocumentCount(endpoint, indexName)` | Get document count |
+
+### TestUtils - Utility Methods
+
+| Method | Description |
+|--------|-------------|
+| `waitForProcessing(type)` | Wait with predefined timeouts (short/medium/long) |
+| `validatePipelineOutputs(outputs, type)` | Validate pipeline outputs structure |
+| `generateTestFileName(prefix, extension?)` | Generate unique test file names |
+| `createTestDocumentContent(title, content?)` | Create structured test content |
+| `bucketExists(buckets, bucketName)` | Check if bucket exists in list |
+| `analyzePolicyPermissions(policy)` | Analyze IAM policy for permissions |
+| `findResourceByNamePattern(resources, field, pattern)` | Find resource by pattern |
+| `findRoleByRoleName(roles, roleName)` | Find IAM role by name pattern |
+
+### TestUtils - Log Processing
+
+| Method | Description |
+|--------|-------------|
+| `collectLogsFromStreams(helper, logGroup, streams, options?)` | Collect logs from multiple streams |
+| `parseLogStreamsForEvent(logMessages)` | Parse logs for event messages |
+| `parseLogStreamsForProcessing(logs, fileName)` | Parse logs for processing indicators |
+| `getLambdaLogGroupName(functionName)` | Get log group name for Lambda |
+| `checkForCatastrophicFailures(logs)` | Check logs for timeout/OOM errors |
+
+### TestUtils - Document Management
+
+| Method | Description |
+|--------|-------------|
+| `uploadDocuments(helper, bucket, documents)` | Upload multiple documents concurrently |
+| `clearVectorStoreIndex(helper, type, endpoint, index)` | Clear vector store index |
+| `getVectorStoreDocumentCount(helper, type, endpoint, index)` | Get document count from vector store |
+
+### Standalone Functions
+
+| Function | Description |
+|----------|-------------|
+| `queryAPI(endpoint, query)` | Query API Gateway endpoint with POST request |
 
 ## Configuration Options
 
-### LogSearchOptions
+### AWSHelperOptions
 
 ```typescript
-interface LogSearchOptions {
-    searchTerm?: string;  // Filter logs by search term
-    minutes?: number;     // How far back to search (default: 5)
-    limit?: number;       // Max events per stream (default: 100)
+interface AWSHelperOptions {
+    region?: string;  // AWS region (default: us-west-2)
 }
 ```
 
-### PolicyAnalysisResult
+### LogStreamOptions
 
 ```typescript
-interface PolicyAnalysisResult {
+interface LogStreamOptions {
+    orderBy?: "LogStreamName" | "LastEventTime";  // Sort order
+    descending?: boolean;                          // Descending sort
+    limit?: number;                               // Max streams to return
+}
+```
+
+### LogEventOptions
+
+```typescript
+interface LogEventOptions {
+    startTime?: number;  // Start time in milliseconds
+    endTime?: number;    // End time in milliseconds  
+    limit?: number;      // Max events to return
+}
+```
+
+### PolicyAnalysis
+
+```typescript
+interface PolicyAnalysis {
     hasOpenSearchPermissions: boolean;
     hasLoggingPermissions: boolean;
     hasBedrockPermissions: boolean;
@@ -183,79 +259,95 @@ interface PolicyAnalysisResult {
 }
 ```
 
-## Migration Guide
-
-### Before (without helper)
+### ValidationResult
 
 ```typescript
-// Initialize multiple clients
-const s3 = new S3Client({ region: "us-west-2" });
-const lambda = new LambdaClient({ region: "us-west-2" });
-const iam = new IAMClient({ region: "us-west-2" });
-
-// Find Lambda functions
-const functions = await lambda.send(new ListFunctionsCommand({}));
-const ingestionFunction = functions.Functions?.find(f => 
-    f.FunctionName?.includes("ingestion-lambda")
-);
-
-// Upload document
-await s3.send(new PutObjectCommand({
-    Bucket: bucketName,
-    Key: testFileName,
-    Body: testContent,
-    ContentType: "text/plain"
-}));
-
-// Get logs
-const logStreams = await cloudWatchLogs.send(new DescribeLogStreamsCommand({
-    logGroupName: logGroupName,
-    orderBy: "LastEventTime",
-    descending: true,
-    limit: 10
-}));
-// ... more complex log processing
+interface ValidationResult {
+    hasInputBucketName: boolean;
+    hasApiEndpoint: boolean;
+    hasVectorStoreEndpoint: boolean;
+    hasVectorStoreType: boolean;
+    correctVectorStoreType: boolean;
+    validEndpointFormat: boolean;
+}
 ```
 
-### After (with helper)
+## Usage Examples
+
+### Basic Integration Test
 
 ```typescript
-// Initialize helper
-const awsHelper = new AWSTestHelper({ region: "us-west-2" });
+import { AWSHelper, TestUtils, queryAPI } from "../helpers/index.ts";
 
-// Find Lambda functions
-const functions = await awsHelper.findPipelineLambdaFunctions();
-const ingestionFunction = functions.ingestion;
+describe("Pipeline Integration Test", () => {
+    let awsHelper: AWSHelper;
 
-// Upload document
-await awsHelper.uploadDocument(bucketName, testFileName, testContent);
+    beforeAll(async () => {
+        awsHelper = new AWSHelper({ region: "us-east-1" });
+    });
 
-// Get logs
-const logs = await awsHelper.getLambdaLogs(ingestionFunction.FunctionName!, {
-    searchTerm: testFileName,
-    minutes: 5
+    afterAll(async () => {
+        await awsHelper.cleanup();
+    });
+
+    it("should process document end-to-end", async () => {
+        // Generate test data
+        const fileName = TestUtils.generateTestFileName("integration-test");
+        const content = TestUtils.createTestDocumentContent("Test Document");
+
+        // Upload to S3
+        await awsHelper.putS3Object("my-bucket", fileName, content, "text/plain");
+
+        // Wait for processing
+        await TestUtils.waitForProcessing('medium');
+
+        // Verify via API
+        const response = await queryAPI("https://api.example.com", "test query");
+        expect(response.success).toBe(true);
+    });
+});
+```
+
+### Policy Validation Test
+
+```typescript
+it("should have correct IAM permissions", async () => {
+    const roleName = "my-lambda-role";
+    
+    // Get role policy
+    const policyNames = await awsHelper.listRolePolicies(roleName);
+    const policy = await awsHelper.getRolePolicy(roleName, policyNames[0]);
+    
+    // Analyze permissions
+    const analysis = TestUtils.analyzePolicyPermissions(policy);
+    expect(analysis.hasOpenSearchPermissions).toBe(true);
+    expect(analysis.hasBedrockPermissions).toBe(true);
 });
 ```
 
 ## Best Practices
 
-1. **Initialize once**: Create the helper instance in your test's `before()` hook
-2. **Use specific methods**: Prefer `findPipelineLambdaFunctions()` over `findLambdaFunctions()`
-3. **Handle errors**: The helper includes error handling, but always check return values
-4. **Clean up**: Call `awsHelper.cleanup()` in your `after()` hook
-5. **Use type safety**: TypeScript definitions are included for all methods
+1. **Initialize once**: Create the AWSHelper instance in your test's `beforeAll()` hook
+2. **Set correct region**: Use the region where your resources are deployed
+3. **Handle errors**: The helpers include error handling, but always check return values
+4. **Clean up**: Call `awsHelper.cleanup()` in your `afterAll()` hook (though AWS SDK v3 doesn't require it)
+5. **Use TestUtils for test logic**: Prefer TestUtils methods for test-specific operations
+6. **Batch operations**: Use functions like `uploadDocuments()` for multiple operations
+7. **Use proper typing**: Import and use the provided TypeScript interfaces
 
-## Examples
+## Available Test Files
 
-See the example files for complete test refactoring:
-- `test/integration/infrastructure.integration.test.example.ts`
-- `test/e2e/document-processing.refactored.example.ts`
+Current integration and E2E tests using these helpers:
+- `test/integration/infrastructure.integration.test.ts` - Infrastructure validation
+- `test/e2e/complete-pipeline.e2e.test.ts` - End-to-end pipeline testing
+- `test/unit/*.test.ts` - Component unit tests
 
 ## Benefits
 
-- **Reduced Code Duplication**: Common patterns are centralized
+- **Reduced Code Duplication**: Common AWS operations are centralized
 - **Better Error Handling**: Consistent error handling across all operations
 - **Improved Readability**: Tests focus on business logic, not AWS SDK details
-- **Type Safety**: Full TypeScript support with proper typing
+- **Type Safety**: Full TypeScript support with proper interfaces
 - **Maintainability**: Changes to AWS patterns only need to be made in one place
-- **Consistency**: All tests use the same patterns and configurations
+- **Comprehensive Testing**: Supports Lambda, IAM, S3, API Gateway, CloudWatch, and OpenSearch operations
+- **Flexible Configuration**: Support for different regions and vector store types

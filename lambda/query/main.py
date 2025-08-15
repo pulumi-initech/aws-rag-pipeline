@@ -5,10 +5,9 @@ import boto3
 from typing import List, Dict, Any
 
 # LangChain imports
-from langchain_community.embeddings import BedrockEmbeddings
+from langchain_aws import BedrockEmbeddings, ChatBedrock
 from langchain_community.vectorstores import OpenSearchVectorSearch
 from langchain_community.vectorstores import Pinecone as PineconeVectorStore
-from langchain_community.chat_models import BedrockChat
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 import pinecone
@@ -80,7 +79,7 @@ def create_vector_store():
 
 def create_llm():
     """Create Bedrock LLM instance"""
-    llm = BedrockChat(
+    llm = ChatBedrock(
         client=bedrock_runtime,
         model_id="anthropic.claude-3-haiku-20240307-v1:0",
         model_kwargs={

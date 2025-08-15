@@ -3,10 +3,16 @@ import * as aws from "@pulumi/aws";
 import { VectorStoreConfig } from "./VectorStore.ts";
 import { ContainerImage } from "./ContainerImage.ts";
 
+export interface PineconeConfig {
+  APIKey: string;
+  Environment: string;
+}
+
 export interface QueryArgs {
   vectorStoreConfig: VectorStoreConfig;
   lambdaCodePath?: string;
   timeout?: number;
+  pineconeConfig?: PineconeConfig;
 }
 
 export class Query extends pulumi.ComponentResource {
@@ -17,6 +23,7 @@ export class Query extends pulumi.ComponentResource {
 
   public readonly roleArn: pulumi.Output<string>;
   public readonly lambdaArn: pulumi.Output<string>;
+  public readonly apiName: pulumi.Output<string>;
   public readonly apiEndpoint: pulumi.Output<string>;
 
   constructor(
@@ -26,11 +33,7 @@ export class Query extends pulumi.ComponentResource {
   ) {
     super("rag:Query", name, {}, opts);
 
-    // Get Pinecone configuration if vector store is Pinecone
-    const pineconeConfig = new pulumi.Config("pinecone");
-    const pineconeApiKey = pineconeConfig.get("APIKey") || "";
-    const pineconeEnvironment =
-      pineconeConfig.get("Environment") || "us-east-1-aws";
+
 
     // Create IAM role with combined policies
     this.role = new aws.iam.Role(
@@ -39,8 +42,9 @@ export class Query extends pulumi.ComponentResource {
         assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({
           Service: "lambda.amazonaws.com",
         }),
+        path: "/aws-rag-pipeline/",
       },
-      { parent: this }
+      { parent: this, deleteBeforeReplace: true }
     );
 
     this.roleArn = this.role.arn;
@@ -116,8 +120,8 @@ export class Query extends pulumi.ComponentResource {
             VECTOR_STORE_ENDPOINT: args.vectorStoreConfig.endpoint,
             VECTOR_STORE_TYPE: args.vectorStoreConfig.type,
             INDEX_NAME: args.vectorStoreConfig.indexName,
-            PINECONE_API_KEY: pineconeApiKey,
-            PINECONE_ENVIRONMENT: pineconeEnvironment,
+            PINECONE_API_KEY: args.pineconeConfig?.APIKey || "",
+            PINECONE_ENVIRONMENT: args.pineconeConfig?.Environment || "",
           },
         },
         timeout: args.timeout || 180,
@@ -183,6 +187,7 @@ export class Query extends pulumi.ComponentResource {
       { parent: this.api }
     );
 
+    this.apiName = this.api.name;
     this.apiEndpoint = pulumi.interpolate`${this.api.apiEndpoint}/prod`;
   }
 }

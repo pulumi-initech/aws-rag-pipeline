@@ -87,7 +87,7 @@ describe("Ingestion Component", () => {
 
         it("should create lambda function with correct configuration for pinecone", () => {
             // Test that the Lambda function was created with correct configuration
-            return pulumi.all([ingestion.lambda.runtime, ingestion.lambda.handler, ingestion.lambda.environment]).apply(([runtime, handler, environment]) => {
+            return pulumi.all([ingestion.lambda.runtime, ingestion.lambda.handler, ingestion.lambda.environment]).apply(([_runtime, _handler, environment]) => {
                 
                 // Check environment variables structure
                 expect(environment).to.deep.equal({

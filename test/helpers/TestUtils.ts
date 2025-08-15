@@ -1,11 +1,5 @@
 // Import removed - not used
 
-export interface LogAnalysis {
-    processingFound: boolean;
-    successFound: boolean;
-    errorFound: boolean;
-    logCount: number;
-}
 
 export interface ValidationResult {
     hasInputBucketName: boolean;
@@ -43,9 +37,9 @@ export interface PolicyAnalysis {
  */
 export class TestUtils {
     /**
-     * Wait for a specified duration
+     * Wait for a specified duration (internal use only)
      */
-    static async wait(milliseconds: number): Promise<void> {
+    private static async wait(milliseconds: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, milliseconds));
     }
 
@@ -89,27 +83,6 @@ export class TestUtils {
         });
     }
 
-    /**
-     * Find pipeline Lambda functions (ingestion and query)
-     */
-    static findPipelineLambdaFunctions(functions: any[]) {
-        const ingestionFunction = this.findSingleResourceByNamePattern(
-            functions, 
-            'FunctionName', 
-            'ingestion-lambda'
-        );
-        const queryFunction = this.findSingleResourceByNamePattern(
-            functions, 
-            'FunctionName', 
-            'query-lambda'
-        );
-
-        return {
-            ingestion: ingestionFunction,
-            query: queryFunction,
-            all: functions
-        };
-    }
 
     /**
      * Find pipeline IAM roles (ingestion and query)
@@ -164,38 +137,6 @@ export class TestUtils {
         };
     }
 
-    /**
-     * Analyze logs for processing evidence
-     */
-    static analyzeLogsForProcessing(logs: string[], fileName: string): LogAnalysis {
-        const processingFound = logs.some(log => 
-            log.includes(fileName) || 
-            log.includes("processed") || 
-            log.includes("ingested") ||
-            log.includes("completed")
-        );
-
-        const successFound = logs.some(log => 
-            log.includes("successfully") || 
-            log.includes("completed") ||
-            log.includes("processed") ||
-            log.includes("ingested")
-        );
-
-        const errorFound = logs.some(log => 
-            log.includes("ERROR") || 
-            log.includes("Failed") ||
-            log.includes("Exception") ||
-            log.includes("Error:")
-        );
-
-        return {
-            processingFound,
-            successFound,
-            errorFound,
-            logCount: logs.length
-        };
-    }
 
     /**
      * Validate pipeline outputs structure and content
@@ -226,39 +167,6 @@ export class TestUtils {
         return results;
     }
 
-    /**
-     * Validate Lambda function configuration
-     */
-    static validateLambdaConfiguration(
-        functionConfig: any, 
-        expectedConfig: {
-            runtime?: string;
-            handler?: string;
-            state?: string;
-            environment?: Record<string, string>;
-        }
-    ) {
-        const config = functionConfig.Configuration || functionConfig;
-        const results = {
-            runtime: config.Runtime === expectedConfig.runtime,
-            handler: config.Handler === expectedConfig.handler,
-            state: config.State === expectedConfig.state,
-            environment: true
-        };
-
-        // Check environment variables if provided
-        if (expectedConfig.environment) {
-            const envVars = config.Environment?.Variables || {};
-            for (const [key, value] of Object.entries(expectedConfig.environment)) {
-                if (envVars[key] !== value) {
-                    results.environment = false;
-                    break;
-                }
-            }
-        }
-
-        return results;
-    }
 
     /**
      * Generate unique test file name
@@ -375,14 +283,6 @@ Document ID: ${timestamp}
         );
     }
 
-    /**
-     * Count processing events for specific files in logs
-     */
-    static countProcessingEvents(logs: string[], fileNames: string[]): number {
-        return fileNames.reduce((count, fileName) => {
-            return count + (logs.some(msg => msg.includes(fileName)) ? 1 : 0);
-        }, 0);
-    }
 
     /**
      * Clear vector store index based on type
@@ -423,49 +323,6 @@ Document ID: ${timestamp}
         }
     }
 
-    /**
-     * Setup clean test environment by clearing vector store
-     */
-    static async setupCleanTestEnvironment(
-        awsHelper: any,
-        outputs: any,
-        vectorStoreType: string = 'opensearch'
-    ): Promise<void> {
-        try {
-            const endpoint = outputs.vectorStoreEndpoint?.value || outputs.vectorStoreEndpoint;
-            const indexName = outputs.indexName?.value || 'rag-documents-v2';
-            
-            console.log(`Setting up clean test environment for ${vectorStoreType}...`);
-            console.log(`Endpoint: ${endpoint}`);
-            console.log(`Index: ${indexName}`);
-            
-            // Get document count before clearing
-            const docCountBefore = await this.getVectorStoreDocumentCount(
-                awsHelper, vectorStoreType, endpoint, indexName
-            );
-            
-            console.log(`Documents before clearing: ${docCountBefore}`);
-            
-            if (docCountBefore > 0) {
-                await this.clearVectorStoreIndex(awsHelper, vectorStoreType, endpoint, indexName);
-                console.log('Vector store index cleared for clean test state');
-                
-                // Wait a moment for the operation to complete
-                await this.wait(2000);
-                
-                // Verify clearing worked
-                const docCountAfter = await this.getVectorStoreDocumentCount(
-                    awsHelper, vectorStoreType, endpoint, indexName
-                );
-                console.log(`Documents after clearing: ${docCountAfter}`);
-            } else {
-                console.log('Index already empty, no clearing needed');
-            }
-        } catch (error: any) {
-            console.log(`Error setting up clean test environment: ${error.message || error}`);
-            // Don't fail the test setup for index clearing issues
-        }
-    }
 
     /**
      * Parse log streams for an event message
@@ -495,11 +352,6 @@ Document ID: ${timestamp}
         let errorFound = false;
 
         for (const message of logMessages) {
-            // Check for processing indicators
-            if (message.includes(testFileName)) {
-                 console.debug(`Found processing log: ${message}`);
-            }
-
             // Check for success indicators
             if (message.includes("Successfully processed")) {
                 successFound = true;
@@ -526,5 +378,32 @@ Document ID: ${timestamp}
             successFound: successFound && hasRelevantLogs,
             errorFound
         };
+    }
+}
+
+// Use native fetch for Node.js 18+
+// @ts-ignore - globalThis.fetch is available in Node.js 18+
+export const fetch = globalThis.fetch;
+
+// Helper function to query the API
+export async function queryAPI(apiEndpoint: string, query: string): Promise<{ success: boolean; data?: any; error?: string; }> {
+    try {
+        const response = await fetch(`${apiEndpoint}/query`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ query })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return { success: true, data };
+        } else {
+            const errorText = await response.text();
+            return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+        }
+    } catch (error) {
+        return { success: false, error: `Network error: ${error}` };
     }
 }

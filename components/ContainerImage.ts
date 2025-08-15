@@ -24,7 +24,7 @@ export class ContainerImage extends pulumi.ComponentResource {
         }, { parent: this });
 
         const current = aws.getCallerIdentity({});
-        const accountId = current.then(current => current.accountId);
+        const _accountId = current.then(current => current.accountId);
         
         // Create ECR repository policy to allow Lambda access
         this.repositoryPolicy = new aws.ecr.RepositoryPolicy(`${args.name}-ecr-policy`, {

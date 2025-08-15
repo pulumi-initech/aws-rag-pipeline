@@ -7,7 +7,7 @@ from urllib.parse import unquote_plus
 
 # LangChain imports
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import BedrockEmbeddings
+from langchain_aws import BedrockEmbeddings
 from langchain_community.vectorstores import OpenSearchVectorSearch
 from langchain_community.vectorstores import Pinecone as PineconeVectorStore
 from langchain.docstore.document import Document
