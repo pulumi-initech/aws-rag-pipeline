@@ -8,7 +8,7 @@ const pineconeConfig = vectorStoreType === "pinecone" ? new pulumi.Config("pinec
 const stackName = pulumi.getStack();
 
 // Create secure input bucket
-const inputBucket = new SecureBucket("input", { name: `rag-input-bucket-${stackName}` });
+const inputBucket = new SecureBucket("input", { name: `rag-input-${stackName}` });
 
 // Create vector store
 const vectorStore = new VectorStore("vector-store", {

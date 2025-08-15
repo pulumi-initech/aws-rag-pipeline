@@ -16,9 +16,9 @@ export class SecureBucket extends pulumi.ComponentResource {
 
         // Create the S3 bucket
         this.bucket = new aws.s3.BucketV2(`${name}-bucket`, {
-            bucket: args.name,
+            bucketPrefix:`${args.name}-`,
             tags: {
-                Name: `${name}-secure-bucket`,
+                Name: `${args.name}`,
                 Environment: "production",
                 Security: "encrypted",
             },
@@ -46,7 +46,7 @@ export class SecureBucket extends pulumi.ComponentResource {
 
         // Enable access logging
         const accessLogBucket = new aws.s3.BucketV2(`${name}-access-logs`, {
-            bucket: `${name}-access-logs`,
+            bucketPrefix: `${args.name}-logs-`,
             tags: {
                 Name: `${name}-access-logs`,
                 Purpose: "s3-access-logging",

@@ -1,11 +1,19 @@
 import "mocha";
-// import { expect } from "chai";
 import * as pulumi from "@pulumi/pulumi";
-// import { SecureBucket } from "../../components/SecureBucket.ts";
+
+// Track created resources for validation
+const createdResources: { type: string; name: string; inputs: any }[] = [];
 
 // Set up runtime mocks for Pulumi resources
 pulumi.runtime.setMocks({
     newResource: function (args: pulumi.runtime.MockResourceArgs) {
+        // Store resource creation info for validation
+        createdResources.push({
+            type: args.type,
+            name: args.name,
+            inputs: args.inputs
+        });
+
         const mockState = {
             ...args.inputs,
         };
@@ -29,7 +37,5 @@ pulumi.runtime.setMocks({
 });
 
 describe("SecureBucket Component", () => {
-    // let _secureBucket: SecureBucket;
 
-    // Tests will be added here
 });
