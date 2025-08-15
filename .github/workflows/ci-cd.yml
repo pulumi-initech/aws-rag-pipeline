@@ -115,7 +115,7 @@ jobs:
         run: pnpm run test:unit --reporter mocha-ctrf-json-reporter
 
       - name: Publish Test Summary Results (CTRF example)
-        run: npx github-actions-ctrf ctrf/ctrf-report.json
+        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Unit Tests Results"
 
   # =============================================================================
   # INTEGRATION TESTS - PR Environment
@@ -191,7 +191,7 @@ jobs:
           PULUMI_STACK_NAME: pr-${{ github.event.number }}
 
       - name: Publish Test Summary Results (CTRF example)
-        run: npx github-actions-ctrf ctrf/ctrf-report.json
+        run: npx github-actions-ctrf ctrf/ctrf-report.json --pr-comment true --title "Integration Tests Results for PR #${{ github.event.number }}" 
 
       - name: Destroy ephemeral stack
         if: always()
@@ -297,7 +297,7 @@ jobs:
           PULUMI_STACK_NAME: staging
 
       - name: Publish Test Summary Results (CTRF example)
-        run: npx github-actions-ctrf ctrf/ctrf-report.json
+        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for Staging"
 
       - name: Run E2E tests against staging
         run: esc run aws-rag-pipeline/staging -i pnpm run test:e2e -- --reporter mocha-ctrf-json-reporter 
@@ -306,7 +306,7 @@ jobs:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Publish Test Summary Results (CTRF example)
-        run: npx github-actions-ctrf ctrf/ctrf-report.json
+        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "E2E Tests Results for Staging"
 
 
   # =============================================================================
