@@ -30,7 +30,6 @@ export class VectorStore extends pulumi.ComponentResource {
         super("rag:VectorStore", name, {}, opts);
 
         const vectorStoreType = args.type || "opensearch";
-     
         if (vectorStoreType === "opensearch") {
 
             if (!args.collectionName) {
@@ -71,8 +70,8 @@ export class VectorStore extends pulumi.ComponentResource {
 
             this.endpoint = this.collection.collectionEndpoint;
             this.collectionArn = this.collection.arn;
+
         } else if (vectorStoreType === "pinecone") {
-            
             
             if (!args.dimension) {
                 throw new Error("Pinecone index requires a dimension argument.");

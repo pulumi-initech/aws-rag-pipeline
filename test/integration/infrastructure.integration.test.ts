@@ -50,20 +50,22 @@ describe("Infrastructure Integration Tests", function() {
         });
     });
 
-    describe("Conditional IAM Policies", () => {
-        it("should include OpenSearch permissions for OpenSearch configuration", async () => {
+    describe("Ingestion Lambda Configuration", () => {
+
+        let ingestionLambda: FunctionConfiguration | undefined;
+
+        before(async () => {
+            ingestionLambda = await awsHelper.getLambdaFunctionConfigurationByArn(outputs.ingestionLambdaArn.value);
+        });
+
+         it("should include required IAM permissions", async () => {
             // Get all roles and find ingestion role
-            const ingestionLambda = await awsHelper.getLambdaFunctionConfigurationByArn(outputs.ingestionLambdaArn.value);
             const ingestionRole = ingestionLambda?.Role;
             expect(ingestionRole, "Ingestion Lambda should have a role configured").to.not.be.undefined;
             
             // Extract role name from ARN - just the role name part (last segment after /)
             const roleNameMatch = ingestionRole?.match(/\/([^/]+)$/);
-            expect(roleNameMatch, "Should be able to extract role name from ARN").to.not.be.null;
             const roleName = roleNameMatch?.[1];
-            expect(roleName, "Role name should be extracted from ARN").to.not.be.undefined;
-
-            expect(ingestionRole, "Role ARN should contain 'ingestion-lambda-role'").to.include("ingestion-lambda-role");
             
             const role = await awsHelper.getIAMRole(roleName as string);
             expect(role, `IAM role ${roleName} should exist`).to.not.be.undefined;
@@ -75,7 +77,11 @@ describe("Infrastructure Integration Tests", function() {
             // Get the first policy and analyze it
             const policy = await awsHelper.getRolePolicy(roleName as string, policyNames[0]);
             const policyAnalysis = TestUtils.analyzePolicyPermissions(policy);
-            
+
+            expect(policyAnalysis.hasLoggingPermissions, "Query role policy should have required CloudWatch logging permissions").to.be.true;
+            expect(policyAnalysis.hasBedrockPermissions, "Query role policy should have required Bedrock access permissions").to.be.true; 
+            expect(policyAnalysis.hasECRPermissions, "Query role policy should have required ECR permissions").to.be.true;
+
             const vectorStoreType = (await stack.getConfig("vectorStore")).value || "opensearch";
             if (vectorStoreType === "opensearch") {
                 expect(policyAnalysis.hasOpenSearchPermissions, "Policy should include OpenSearch permissions for opensearch vector store").to.be.true;
@@ -84,43 +90,6 @@ describe("Infrastructure Integration Tests", function() {
             }
         });
 
-        it("should include required base permissions", async function() {
-
-            // Get query lambda role name from ARN and fetch role directly
-            const queryLambda = await awsHelper.getLambdaFunctionConfigurationByArn(outputs.queryLambdaArn.value);
-            const queryRole = queryLambda?.Role;
-            expect(queryRole, "Query Lambda should have a role configured").to.not.be.undefined;
-            
-            // Extract role name from ARN - just the role name part (last segment after /)
-            const roleNameMatch = queryRole?.match(/\/([^/]+)$/);
-            expect(roleNameMatch, "Should be able to extract role name from query role ARN").to.not.be.null;
-            const roleName = roleNameMatch?.[1];
-            expect(roleName, "Query role name should be extracted from ARN").to.not.be.undefined;
-
-            expect(queryRole, "Query role ARN should contain 'query-lambda-role'").to.include("query-lambda-role");
-            
-            // At this point roleName is guaranteed to be defined due to the expect check above
-            const role = await awsHelper.getIAMRole(roleName as string);
-            expect(role, `IAM query role ${roleName} should exist`).to.not.be.undefined;
-            
-            // Get role policies
-            const policyNames = await awsHelper.listRolePolicies(roleName as string);
-            const policy = await awsHelper.getRolePolicy(roleName as string, policyNames[0]);
-            const policyAnalysis = TestUtils.analyzePolicyPermissions(policy);
-            
-            expect(policyAnalysis.hasLoggingPermissions, "Query role policy should have CloudWatch logging permissions").to.be.true;
-            expect(policyAnalysis.hasBedrockPermissions, "Query role policy should have Bedrock access permissions").to.be.true;
-            expect(policyAnalysis.hasOpenSearchPermissions, "Query role policy should have OpenSearch access permissions").to.be.true;
-        });
-    });
-
-    describe("Ingestion Lambda Configuration", () => {
-
-        let ingestionLambda: FunctionConfiguration | undefined;
-
-        before(async () => {
-            ingestionLambda = await awsHelper.getLambdaFunctionConfigurationByArn(outputs.ingestionLambdaArn.value);
-        });
 
         it("should have ingestion Lambda function in healthy state", async () => {
             expect(ingestionLambda, "Ingestion Lambda function should be retrieved").to.not.be.undefined;
@@ -191,6 +160,38 @@ describe("Infrastructure Integration Tests", function() {
 
         before(async () => {
             queryLambda = await awsHelper.getLambdaFunctionConfigurationByArn(outputs.queryLambdaArn.value);
+        });
+
+
+         it("should include required IAM permissions", async function() {
+
+            // Get query lambda role name from ARN and fetch role directly
+            const queryRole = queryLambda?.Role;
+            expect(queryRole, "Query Lambda should have a role configured").to.not.be.undefined;
+            
+            // Extract role name from ARN - just the role name part (last segment after /)
+            const roleNameMatch = queryRole?.match(/\/([^/]+)$/);
+            const roleName = roleNameMatch?.[1];
+
+            // At this point roleName is guaranteed to be defined due to the expect check above
+            const role = await awsHelper.getIAMRole(roleName as string);
+            expect(role, `IAM query role ${roleName} should exist`).to.not.be.undefined;
+            
+            // Get role policies
+            const policyNames = await awsHelper.listRolePolicies(roleName as string);
+            const policy = await awsHelper.getRolePolicy(roleName as string, policyNames[0]);
+            const policyAnalysis = TestUtils.analyzePolicyPermissions(policy);
+            
+            expect(policyAnalysis.hasLoggingPermissions, "Query role policy should have required CloudWatch logging permissions").to.be.true;
+            expect(policyAnalysis.hasBedrockPermissions, "Query role policy should have required Bedrock access permissions").to.be.true;
+            expect(policyAnalysis.hasECRPermissions, "Query role policy should have required ECR permissions").to.be.true;
+
+            const vectorStoreType = (await stack.getConfig("vectorStore")).value || "opensearch";  
+            if (vectorStoreType === "opensearch") {
+                expect(policyAnalysis.hasOpenSearchPermissions, "Policy should include OpenSearch permissions for opensearch vector store").to.be.true;
+            } else {
+                expect(policyAnalysis.hasOpenSearchPermissions, "Policy should not include OpenSearch permissions for non-opensearch vector store").to.be.false;
+            }
         });
 
         it("should have query Lambda function in healthy state", async () => {

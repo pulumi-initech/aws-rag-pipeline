@@ -14,6 +14,7 @@ export interface PolicyAnalysis {
     hasOpenSearchPermissions: boolean;
     hasLoggingPermissions: boolean;
     hasBedrockPermissions: boolean;
+    hasECRPermissions: boolean;
     statementCount: number;
     policyDocument: any;
 }
@@ -128,10 +129,19 @@ export class TestUtils {
             return actions.includes("bedrock:InvokeModel");
         });
 
+        const hasECRPermissions = policyDocument.Statement.some((statement: any) => {
+            const actions = Array.isArray(statement.Action) ? statement.Action : [statement.Action];
+            return actions.includes("ecr:GetAuthorizationToken") &&
+                   actions.includes("ecr:BatchCheckLayerAvailability") &&
+                   actions.includes("ecr:GetDownloadUrlForLayer") &&
+                   actions.includes("ecr:BatchGetImage");
+        });
+
         return {
             hasOpenSearchPermissions,
             hasLoggingPermissions,
             hasBedrockPermissions,
+            hasECRPermissions,
             statementCount: policyDocument.Statement.length,
             policyDocument
         };
