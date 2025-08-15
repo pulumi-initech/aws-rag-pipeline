@@ -130,7 +130,7 @@ jobs:
         run: sleep 30
 
       - name: Run integration tests
-        run: pnpm run test:integration -- --reporter mocha-ctrf-json-reporter
+        run: pnpm run test:integration
         timeout-minutes: 15
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
