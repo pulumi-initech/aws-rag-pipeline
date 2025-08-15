@@ -12,93 +12,17 @@ env:
   PULUMI_ORGANIZATION: initech
 
 jobs:
-  quality_checks:
-    name: Code Quality & Security
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          version: 10
-          run_install: false
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version:  ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run ESLint
-        run: pnpm run lint:check
-
-      - name: Run TypeScript compilation check
-        run: pnpm run build
-
-      - name: Run security audit
-        run: pnpm audit --audit-level moderate
-
-      # - name: Check for secrets in code
-      #   uses: trufflesecurity/trufflehog@main
-      #   with:
-      #     path: ./
-      #     base: main
-      #     head: HEAD
-      #     extra_args: --debug --only-verified
-
-  unit_tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    needs: quality_checks
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          version: 10
-          run_install: false
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version:  ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run unit tests
-        run: pnpm run test:unit --reporter mocha-ctrf-json-reporter
-
-      - name: Publish Test Summary Results (CTRF example)
-        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Unit Tests Results"
+  quality_and_tests:
+    name: Quality Checks and Unit Tests
+    uses: ./.github/workflows/quality-and-tests.yml
+    with:
+      node-version: "23"
 
   preview_pr:
     name: Preview Changes (PR)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
-    needs: [quality_checks, unit_tests]
+    needs: [quality_and_tests]
     environment: pr-testing
     concurrency:
       group: pr-${{ github.event.number }}
@@ -209,6 +133,7 @@ jobs:
         run: pnpm run test:integration -- --reporter mocha-ctrf-json-reporter
         timeout-minutes: 15
         env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
           PULUMI_STACK_NAME: pr-${{ github.event.number }}
 
       - name: Publish Integration Test Summary Results
