@@ -19,40 +19,33 @@ Multi-stage pipeline ensuring code quality, security, and reliable deployments.
 ```mermaid
 graph TD
     subgraph "Reusable Workflow"
-        RW[quality-and-tests.yml]
-        QC[Quality Checks<br/>ESLint, TypeScript, Security]
-        UT[Unit Tests<br/>Component Testing]
-        RW --> QC
-        QC --> UT
+        QT[quality-and-tests.yml<br/>Quality Checks + Unit Tests]
     end
     
-    subgraph "Pull Request Flow (pr.yml)"
-        PR[Pull Request Created] --> RW
-        UT --> PV[Preview Changes<br/>Pulumi Preview]
-        PV --> IT[Integration Tests<br/>Ephemeral Stack pr-{number}]
-        IT --> CL[Cleanup<br/>Destroy Stack]
+    subgraph "Pull Request Flow"
+        PR[Pull Request] --> QT
+        QT --> PV[Preview Changes]
+        PV --> IT[Integration Tests<br/>Ephemeral Stack]
+        IT --> CL[Cleanup Stack]
     end
     
-    subgraph "Main Branch Flow (push.yml)"
-        PUSH[Push to Main] --> RW
-        UT --> DS[Deploy Staging<br/>staging stack]
-        DS --> E2E[Integration & E2E Tests<br/>Real Infrastructure]
-        E2E --> DP[Deploy Production<br/>Manual Approval Required]
-        DP --> HC[Health Checks]
+    subgraph "Main Branch Flow"
+        PUSH[Push to Main] --> QT
+        QT --> DS[Deploy Staging]
+        DS --> E2E[Integration & E2E Tests]
+        E2E --> DP[Deploy Production<br/>Manual Approval]
     end
     
     subgraph "Manual Deployment"
-        MD[workflow_dispatch] --> RW
-        UT --> MDeploy[Deploy to Environment<br/>staging or production]
+        MD[workflow_dispatch] --> QT
+        QT --> MDP[Deploy to Environment]
     end
     
-    style RW fill:#e1f5fe
-    style QC fill:#f3e5f5
-    style UT fill:#f3e5f5
-    style IT fill:#fff3e0
-    style E2E fill:#fff3e0
-    style CL fill:#ffebee
-    style HC fill:#e8f5e8
+    style QT fill:#1976d2,color:#fff
+    style IT fill:#f57c00,color:#fff
+    style E2E fill:#f57c00,color:#fff
+    style CL fill:#d32f2f,color:#fff
+    style DP fill:#388e3c,color:#fff
 ```
 
 ## 🔧 Key Features
