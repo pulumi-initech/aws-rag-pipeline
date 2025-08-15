@@ -9,14 +9,13 @@ on:
 
 env:
   NODE_VERSION: 23
-  PULUMI_ORGANIZATION: initech
 
 jobs:
   quality_and_tests:
     name: Quality Checks and Unit Tests
     uses: ./.github/workflows/quality-and-tests.yml
     with:
-      node-version: "23"
+      node-version: ${{ env.NODE_VERSION }}
 
   preview_pr:
     name: Preview Changes (PR)
@@ -103,10 +102,7 @@ jobs:
           organization: ${{ env.PULUMI_ORGANIZATION }}
           requested-token-type: urn:pulumi:token-type:access_token:organization
 
-      - name: Setup ESC and inject credentials
-        uses: pulumi/esc-action@v1
-        with:
-          environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/pr
+
 
       - name: Create PR stack configuration
         run: |
@@ -129,8 +125,13 @@ jobs:
       - name: Wait for infrastructure to stabilize
         run: sleep 30
 
+      - name: Setup ESC and inject credentials
+        uses: pulumi/esc-action@v1
+        with:
+          environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/pr
+          
       - name: Run integration tests
-        run: pnpm run test:integration
+        run: pnpm run test:integration -- --reporter mocha-ctrf-json-reporter
         timeout-minutes: 15
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
@@ -138,13 +139,13 @@ jobs:
 
       - name: Publish Integration Test Summary Results
         if: always()
-        run: npx github-actions-ctrf ctrf/ctrf-report.json --pr-comment true --title "Integration Tests Results for PR #${{ github.event.number }}" 
+        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for PR #${{ github.event.number }}" 
 
-      - name: Destroy ephemeral stack
-        if: always()
-        uses: pulumi/actions@v5
-        with:
-          command: destroy
-          stack-name: pr-${{ github.event.number }}
-          comment-on-pr: false
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Destroy ephemeral stack
+      #   if: always()
+      #   uses: pulumi/actions@v5
+      #   with:
+      #     command: destroy
+      #     stack-name: pr-${{ github.event.number }}
+      #     comment-on-pr: false
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}

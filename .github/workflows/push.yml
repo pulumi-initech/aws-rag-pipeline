@@ -19,14 +19,13 @@ on:
 
 env:
   NODE_VERSION: 23
-  PULUMI_ORGANIZATION: initech
 
 jobs:
   quality_and_tests:
     name: Quality Checks and Unit Tests
     uses: ./.github/workflows/quality-and-tests.yml
     with:
-      node-version: "23"
+      node-version: ${{ env.NODE_VERSION }}
 
   deploy_staging:
     name: Deploy to Staging
