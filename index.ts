@@ -5,9 +5,10 @@ import { SecureBucket, VectorStore, Ingestion, Query, ServerlessAccessPolicy } f
 const config = new pulumi.Config();
 const vectorStoreType = config.get("vectorStore") || "opensearch";
 const pineconeConfig = vectorStoreType === "pinecone" ? new pulumi.Config("pinecone") : undefined;
+const stackName = pulumi.getStack();
 
 // Create secure input bucket
-const inputBucket = new SecureBucket("input");
+const inputBucket = new SecureBucket("input", { name: `rag-input-bucket-${stackName}` });
 
 // Create vector store
 const vectorStore = new VectorStore("vector-store", {
