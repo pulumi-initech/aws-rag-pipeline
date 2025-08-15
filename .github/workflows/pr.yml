@@ -15,7 +15,7 @@ jobs:
     name: Quality Checks and Unit Tests
     uses: ./.github/workflows/quality-and-tests.yml
     with:
-      node-version: ${{ env.NODE_VERSION }}
+      node-version: 23
 
   preview_pr:
     name: Preview Changes (PR)
@@ -61,7 +61,7 @@ jobs:
           command: preview
           stack-name: production
           upsert: true
-          comment-on-pr: false
+          comment-on-pr: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   integration_tests_pr:
@@ -129,7 +129,7 @@ jobs:
         uses: pulumi/esc-action@v1
         with:
           environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/pr
-          
+
       - name: Run integration tests
         run: pnpm run test:integration -- --reporter mocha-ctrf-json-reporter
         timeout-minutes: 15
