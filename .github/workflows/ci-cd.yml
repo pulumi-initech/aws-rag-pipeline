@@ -117,6 +117,53 @@ jobs:
       - name: Publish Test Summary Results (CTRF example)
         run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Unit Tests Results"
 
+  preview_pr:
+    name: Preview Changes (PR)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [quality_checks, unit_tests]
+    environment: pr-testing
+    concurrency:
+      group: pr-${{ github.event.number }}
+      cancel-in-progress: true
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Authenticate with Pulumi
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: ${{ env.PULUMI_ORGANIZATION }}
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+
+      - name: Preview Changes
+        uses: pulumi/actions@v5
+        with:
+          command: preview
+          stack-name: production
+          upsert: true
+          comment-on-pr: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
   # =============================================================================
   # INTEGRATION TESTS - PR Environment
   # =============================================================================
@@ -178,7 +225,7 @@ jobs:
           command: up
           stack-name: pr-${{ github.event.number }}
           upsert: true
-          comment-on-pr: true
+          comment-on-pr: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Wait for infrastructure to stabilize
@@ -190,7 +237,9 @@ jobs:
         env:
           PULUMI_STACK_NAME: pr-${{ github.event.number }}
 
-      - name: Publish Test Summary Results (CTRF example)
+      - name: Publish Integration Test Summary Results
+        dependencies: Run integration tests
+        if: always()
         run: npx github-actions-ctrf ctrf/ctrf-report.json --pr-comment true --title "Integration Tests Results for PR #${{ github.event.number }}" 
 
       - name: Destroy ephemeral stack
@@ -199,7 +248,7 @@ jobs:
         with:
           command: destroy
           stack-name: pr-${{ github.event.number }}
-          comment-on-pr: true
+          comment-on-pr: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   # =============================================================================
@@ -297,6 +346,8 @@ jobs:
           PULUMI_STACK_NAME: staging
 
       - name: Publish Test Summary Results (CTRF example)
+        dependencies: Run integration tests against staging
+        if: always()
         run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for Staging"
 
       - name: Run E2E tests against staging
@@ -306,6 +357,8 @@ jobs:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Publish Test Summary Results (CTRF example)
+        dependencies: Run E2E tests against staging
+        if: always()
         run: npx github-actions-ctrf ctrf/ctrf-report.json --title "E2E Tests Results for Staging"
 
 
