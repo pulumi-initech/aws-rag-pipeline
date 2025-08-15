@@ -112,10 +112,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run unit tests
-        run: pnpm run test:unit --reporter mocha-ctrf-json-reporter --reporter-options "outputFile=unit-results.json"
+        run: pnpm run test:unit --reporter mocha-ctrf-json-reporter
 
       - name: Publish Test Summary Results (CTRF example)
-        run: npx github-actions-ctrf ctrf/unit-results.json
+        run: npx github-actions-ctrf ctrf/ctrf-report.json
 
   # =============================================================================
   # INTEGRATION TESTS - PR Environment
@@ -185,13 +185,13 @@ jobs:
         run: sleep 30
 
       - name: Run integration tests
-        run: pnpm run test:integration -- --reporter mocha-ctrf-json-reporter --reporter-options "outputFile=integration-results.json"
+        run: pnpm run test:integration -- --reporter mocha-ctrf-json-reporter
         timeout-minutes: 15
         env:
           PULUMI_STACK_NAME: pr-${{ github.event.number }}
 
       - name: Publish Test Summary Results (CTRF example)
-        run: npx github-actions-ctrf ctrf/integration-results.json
+        run: npx github-actions-ctrf ctrf/ctrf-report.json
 
       - name: Destroy ephemeral stack
         if: always()
@@ -286,13 +286,13 @@ jobs:
           environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/staging
 
       - name: Run E2E tests against staging
-        run: esc run aws-rag-pipeline/staging -i pnpm run test:e2e -- --reporter mocha-ctrf-json-reporter --reporter-options "outputFile=e2e-results.json"
+        run: esc run aws-rag-pipeline/staging -i pnpm run test:e2e -- --reporter mocha-ctrf-json-reporter 
         timeout-minutes: 20
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
 
       - name: Publish Test Summary Results (CTRF example)
-        run: npx github-actions-ctrf ctrf/e2e-results.json
+        run: npx github-actions-ctrf  ctrf/ctrf-report.json
 
 
   # =============================================================================
@@ -333,11 +333,6 @@ jobs:
         with:
           organization: ${{ env.PULUMI_ORGANIZATION }}
           requested-token-type: urn:pulumi:token-type:access_token:organization
-
-      - name: Setup ESC and inject credentials
-        uses: pulumi/esc-action@v1
-        with:
-          environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline-production
 
       - name: Deploy to production
         uses: pulumi/actions@v5
