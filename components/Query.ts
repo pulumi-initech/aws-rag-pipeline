@@ -33,22 +33,6 @@ export class Query extends pulumi.ComponentResource {
   ) {
     super("rag:Query", name, {}, opts);
 
-
-
-    // Create IAM role with combined policies
-    this.role = new aws.iam.Role(
-      `query-lambda-role`,
-      {
-        assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({
-          Service: "lambda.amazonaws.com",
-        }),
-        path: "/aws-rag-pipeline/",
-      },
-      { parent: this, deleteBeforeReplace: true }
-    );
-
-    this.roleArn = this.role.arn;
-
     const policyDoc = {
       Version: "2012-10-17",
       Statement: [
@@ -87,15 +71,25 @@ export class Query extends pulumi.ComponentResource {
       });
     }
 
-    // Combined policy for query Lambda
-    new aws.iam.RolePolicy(
-      `query-lambda-policy`,
+    // Create IAM role with combined policies
+    this.role = new aws.iam.Role(
+      `query-lambda-role`,
       {
-        role: this.role.name,
-        policy: JSON.stringify(policyDoc),
+        assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({
+          Service: "lambda.amazonaws.com",
+        }),
+        path: "/aws-rag-pipeline/",
+        inlinePolicies: [
+          {
+            name: "query-lambda-policy",
+            policy: pulumi.jsonStringify(policyDoc),
+          }
+        ]
       },
-      { parent: this.role }
+      { parent: this, deleteBeforeReplace: true }
     );
+    this.roleArn = this.role.arn;
+
 
     // Create container image
     this.containerImage = new ContainerImage(

@@ -13,7 +13,6 @@ export interface IngestionArgs {
 export class Ingestion extends pulumi.ComponentResource {
     
     public readonly role: aws.iam.Role;
-    public readonly policy: aws.iam.RolePolicy;
     public readonly containerImage: ContainerImage;
     public readonly lambda: aws.lambda.Function;
     public readonly invokePermission: aws.lambda.Permission;
@@ -30,15 +29,7 @@ export class Ingestion extends pulumi.ComponentResource {
         const pineconeConfig = new pulumi.Config("pinecone");
         const pineconeApiKey = pineconeConfig.get("APIKey") || "";
         const pineconeEnvironment = pineconeConfig.get("Environment") || "us-east-1-aws";
-
-        // Create IAM role with combined policies
-        this.role = new aws.iam.Role(`ingestion-lambda-role`, {
-            assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({ Service: "lambda.amazonaws.com" }),
-            path: "/aws-rag-pipeline/",
-        }, { parent: this });
-
-        this.roleArn = this.role.arn;
-
+        
         const policyDoc = {
             Version: "2012-10-17",
             Statement:  [{
@@ -84,12 +75,18 @@ export class Ingestion extends pulumi.ComponentResource {
             });
         }
 
-        // Combined policy for ingestion Lambda
-        this.policy = new aws.iam.RolePolicy(`ingestion-lambda-role-policy`, {
-            role: this.role.name,
-            policy: pulumi.jsonStringify(policyDoc),
-        }, { parent: this.role });
+        // Create IAM role with combined policies
+        this.role = new aws.iam.Role(`ingestion-lambda-role`, {
+            assumeRolePolicy: aws.iam.assumeRolePolicyForPrincipal({ Service: "lambda.amazonaws.com" }),
+            path: "/aws-rag-pipeline/",
+            inlinePolicies: [{
+                name: "ingestion-lambda-policy",
+                policy: pulumi.jsonStringify(policyDoc),
+            }]
+        }, { parent: this, deleteBeforeReplace: true });
 
+        this.roleArn = this.role.arn;
+  
         // Create container image
         this.containerImage = new ContainerImage(`ingestion-lambda`, {
             name: "ingestion-lambda",
