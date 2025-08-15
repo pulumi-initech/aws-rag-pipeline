@@ -20,7 +20,7 @@ on:
 env:
   NODE_VERSION: 23
   PULUMI_ORGANIZATION: initech
-  
+
 jobs:
   quality_and_tests:
     name: Quality Checks and Unit Tests
@@ -119,7 +119,7 @@ jobs:
 
       - name: Publish Test Summary Results (CTRF example)
         if: always()
-        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for Staging" &&
+        run: npx github-actions-ctrf ctrf/ctrf-report.json --title "Integration Tests Results for Staging" 
 
       - name: Run E2E tests against staging
         run: |

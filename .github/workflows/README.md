@@ -1,251 +1,83 @@
 # GitHub Actions CI/CD Pipeline
 
-This repository uses a comprehensive multi-stage CI/CD pipeline that ensures code quality, security, and reliable deployments.
+Multi-stage pipeline ensuring code quality, security, and reliable deployments.
 
-## 🔄 Workflow Overview
+## 📁 Workflow Files
 
-### Trigger Events
-- **Pull Requests**: Triggers quality checks, unit tests, and integration tests with ephemeral infrastructure
-- **Push to Main**: Deploys to staging, runs E2E tests, then deploys to production (with approval)
-- **Manual Dispatch**: Allows manual deployment to staging or production
-- **Schedule**: Cleanup old PR stacks (optional)
+- **`quality-and-tests.yml`** - Reusable workflow for quality checks and unit tests
+- **`pr.yml`** - Pull request validation with ephemeral infrastructure
+- **`push.yml`** - Main branch deployment (staging → production)
 
-## 🏗️ Pipeline Stages
+## 🔄 Pipeline Flow
 
-### 1. Quality Checks (Always First)
-- **ESLint**: Code style and Pulumi anti-patterns detection
-- **TypeScript**: Compilation checks
-- **Security Audit**: Dependency vulnerability scanning
-- **Secret Detection**: TruffleHog scan for leaked secrets
+**Pull Requests**: Quality checks → Unit tests → Integration tests (ephemeral stack)
+**Push to Main**: Quality checks → Unit tests → Deploy staging → E2E tests → Deploy production
+**Manual**: Quality checks → Unit tests → Deploy to selected environment
 
-### 2. Unit Tests
-- Fast feedback with isolated component testing
-- Code coverage reporting via Codecov
-- No infrastructure dependencies
-
-### 3. Integration Tests (PR Only)
-- **Ephemeral Infrastructure**: Creates `pr-{number}` stack
-- **Real AWS Resources**: Tests actual infrastructure behavior
-- **Automatic Cleanup**: Destroys stack after tests (even on failure)
-- **Concurrency Protection**: Only one test per PR at a time
-
-### 4. Staging Deployment (Main Branch)
-- **Automated Deployment**: No approval required
-- **Health Checks**: Post-deployment validation
-- **Environment Protection**: GitHub environment rules
-
-### 5. End-to-End Tests (Staging)
-- **Complete Pipeline Validation**: Document upload → processing → query
-- **ESC Integration**: Uses Pulumi ESC for secure environment access
-- **Artifact Collection**: Saves test results on failure
-
-### 6. Production Deployment (Main Branch)
-- **Manual Approval Required**: GitHub environment protection
-- **Health Checks**: Comprehensive post-deployment validation
-- **Slack Notifications**: Success/failure alerts
-- **Rollback Ready**: Can quickly revert if issues arise
-
-## 🔒 Security Features
-
-### Environment Protection
-- **PR Testing**: Isolated ephemeral stacks
-- **Staging**: Automatic deployment with health checks
-- **Production**: Manual approval required
-
-### OIDC Authentication & ESC Integration
-- **Token-less Authentication**: No long-lived secrets stored in GitHub
-- **Short-lived Credentials**: 1-2 hour AWS token duration
-- **Identity-based Access**: Uses GitHub identity for authentication
-- **Environment Separation**: Separate AWS roles per environment
-- **Complete Audit Trail**: Full visibility into deployments
-
-### Security Scanning
-- **TruffleHog**: Detects leaked credentials
-- **npm audit**: Finds vulnerable dependencies
-- **ESLint**: Catches Pulumi security anti-patterns
-
-## 🧪 Test Suite Integration
-
-### Our Test Types
-```bash
-# Unit Tests (Components only)
-pnpm run test:unit          # Mocked, fast feedback
-
-# Integration Tests (Real Infrastructure)
-pnpm run test:integration   # AWS resources, IAM policies
-
-# End-to-End Tests (Complete Pipeline)
-pnpm run test:e2e          # Document → Query flow
-```
-
-### Test Environment Matrix
-- **PR**: Ephemeral stack (`pr-{number}`)
-- **Staging**: Persistent stack for E2E validation
-- **Production**: Protected, manual approval only
-
-## ⚙️ Configuration
-
-### OIDC Setup Required
-
-**Before using this workflow**, you must configure OIDC authentication:
-
-1. **Follow the setup guide**: See `.pulumi/OIDC-SETUP.md` for detailed instructions
-2. **Create AWS IAM roles** for each environment (pr, staging, production)
-3. **Register GitHub OIDC issuer** in Pulumi Cloud
-4. **Create Pulumi ESC environments** with the provided configurations
-5. **Set repository variables** (not secrets) in GitHub
-
-### Required GitHub Configuration
-
-#### Variables (Repository Settings → Variables)
-```yaml
-PULUMI_ORGANIZATION         # Your Pulumi organization name
-```
-
-#### Secrets (Repository Settings → Secrets) 
-```yaml
-PINECONE_API_KEY           # Vector database (optional)
-SLACK_WEBHOOK_URL          # Notifications (optional)
-```
-
-#### OIDC Authentication (No Secrets Required!)
-- **Pulumi Access Token**: Obtained via OIDC authentication
-- **AWS Credentials**: Injected via Pulumi ESC environments
-- **Short-lived Tokens**: 1-2 hour duration for security
-
-### GitHub Environments
-Create these environments in your repository settings:
-
-1. **pr-testing**
-   - No protection rules
-   - Used for ephemeral PR stacks
-
-2. **staging**
-   - Auto-deploy from main branch
-   - Basic health checks required
-
-3. **production**
-   - **Required reviewers**: Senior developers
-   - **Wait timer**: 5 minutes minimum
-   - **Branch protection**: main only
-
-## 🚀 Deployment Flow
+## 🚀 Workflow Architecture
 
 ```mermaid
 graph TD
-    A[Code Push/PR] --> B[Quality Checks]
-    B --> C[Unit Tests]
-    C --> D{Event Type}
+    subgraph "Reusable Workflow"
+        RW[quality-and-tests.yml]
+        QC[Quality Checks<br/>ESLint, TypeScript, Security]
+        UT[Unit Tests<br/>Component Testing]
+        RW --> QC
+        QC --> UT
+    end
     
-    D -->|PR| E[Integration Tests PR]
-    E --> F[Deploy Ephemeral Stack]
-    F --> G[Run Integration Tests]
-    G --> H[Destroy Ephemeral Stack]
+    subgraph "Pull Request Flow (pr.yml)"
+        PR[Pull Request Created] --> RW
+        UT --> PV[Preview Changes<br/>Pulumi Preview]
+        PV --> IT[Integration Tests<br/>Ephemeral Stack pr-{number}]
+        IT --> CL[Cleanup<br/>Destroy Stack]
+    end
     
-    D -->|Push to Main| I[Deploy Staging]
-    I --> J[E2E Tests Staging]
-    J --> K[Deploy Production]
-    K --> L[Health Checks]
-    L --> M[Slack Notification]
+    subgraph "Main Branch Flow (push.yml)"
+        PUSH[Push to Main] --> RW
+        UT --> DS[Deploy Staging<br/>staging stack]
+        DS --> E2E[Integration & E2E Tests<br/>Real Infrastructure]
+        E2E --> DP[Deploy Production<br/>Manual Approval Required]
+        DP --> HC[Health Checks]
+    end
+    
+    subgraph "Manual Deployment"
+        MD[workflow_dispatch] --> RW
+        UT --> MDeploy[Deploy to Environment<br/>staging or production]
+    end
+    
+    style RW fill:#e1f5fe
+    style QC fill:#f3e5f5
+    style UT fill:#f3e5f5
+    style IT fill:#fff3e0
+    style E2E fill:#fff3e0
+    style CL fill:#ffebee
+    style HC fill:#e8f5e8
 ```
 
-## 📊 Performance Optimizations
+## 🔧 Key Features
 
-### Caching Strategy
-- **pnpm cache**: Dependencies cached by lockfile hash
-- **Node modules**: Restored from cache when possible
-- **Docker layers**: Multi-stage builds (if applicable)
+**Reusable Workflow**: `quality-and-tests.yml` eliminates code duplication - quality checks and unit tests defined once, used by both PR and push workflows.
 
-### Parallel Execution
-- Quality checks run independently
-- Multiple test suites can run simultaneously
-- Deployment and testing are pipelined
+**Security**: OIDC authentication, short-lived tokens, ephemeral PR stacks with automatic cleanup.
 
-### Resource Management
-- **Concurrency groups**: Prevent resource conflicts
-- **Timeout limits**: Prevent hanging jobs
-- **Automatic cleanup**: Remove old PR stacks
+**Testing**: Unit tests → Integration tests (real AWS) → E2E tests (full pipeline).
 
-## 🔧 Customization
+## ⚙️ Setup
 
-### Adding New Test Types
-1. Add npm script in `package.json`
-2. Create new job in workflow
-3. Set appropriate `needs:` dependencies
-4. Configure timeout and environment
-
-### Modifying Environments
-1. Update GitHub environment settings
-2. Adjust workflow `environment:` fields
-3. Update secret configurations
-4. Test with manual dispatch
-
-### Custom Health Checks
-Replace placeholder health checks with:
-```bash
-# API endpoint testing
-curl -f $API_ENDPOINT/health
-
-# Database connectivity
-pulumi stack output --stack staging | jq -r '.databaseUrl' | xargs -I {} curl {}
-
-# Custom validation scripts
-./scripts/validate-deployment.sh
-```
+1. Configure OIDC authentication (see `.pulumi/OIDC-SETUP.md`)
+2. Create GitHub environments: `pr-testing`, `staging`, `production`
+3. Set repository variable: `PULUMI_ORGANIZATION`
 
 ## 🐛 Troubleshooting
 
-### Common Issues
-
-**Tests failing in PR but not locally:**
-- Check AWS credentials in PR environment
-- Verify ephemeral stack creation
-- Review resource naming conflicts
-
-**E2E tests timing out:**
-- Increase timeout in workflow
-- Check infrastructure deployment time
-- Verify ESC environment configuration
-
-**Production deployment stuck:**
-- Check environment protection rules
-- Verify reviewer availability
-- Review deployment logs
-
-### Debug Commands
 ```bash
 # Check stack status
 pulumi stack ls --all
 
-# View recent deployments
-gh run list --workflow=ci-cd.yml
+# View workflow runs
+gh run list --workflow=push.yml
 
-# Download workflow logs
+# Download logs
 gh run download <run-id>
 ```
-
-## 📈 Metrics & Monitoring
-
-### Success Metrics
-- **Pipeline Success Rate**: Target >95%
-- **Deployment Frequency**: Multiple times per day
-- **Lead Time**: PR merge to production <2 hours
-- **Recovery Time**: <15 minutes for rollbacks
-
-### Monitoring Integration
-- GitHub Actions built-in metrics
-- Slack notifications for key events
-- Pulumi Cloud deployment history
-- AWS CloudWatch for infrastructure health
-
----
-
-## 🤝 Contributing
-
-When contributing to this pipeline:
-
-1. **Test Changes**: Use manual dispatch to test workflow changes
-2. **Update Documentation**: Keep this README current
-3. **Review Security**: Ensure no secrets in workflow files
-4. **Performance**: Consider caching and parallel execution
-5. **Environments**: Test against staging before production changes
