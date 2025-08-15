@@ -270,6 +270,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Authenticate with Pulumi
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: ${{ env.PULUMI_ORGANIZATION }}
+
       - name: Setup ESC and inject credentials
         uses: pulumi/esc-action@v1
         with:
