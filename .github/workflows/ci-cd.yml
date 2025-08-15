@@ -112,11 +112,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run unit tests
-        run: pnpm run test:unit --reporter mocha-ctrf-json-reporter --reporter-options output=ctrf/unit-results.json
+        run: pnpm run test:unit --reporter mocha-ctrf-json-reporter --reporter-options "outputFile=unit-results.json"
 
       - name: Publish Test Summary Results (CTRF example)
         run: npx github-actions-ctrf ctrf/unit-results.json
-        
+
   # =============================================================================
   # INTEGRATION TESTS - PR Environment
   # =============================================================================
@@ -185,7 +185,7 @@ jobs:
         run: sleep 30
 
       - name: Run integration tests
-        run: pnpm run test:integration -- --reporter mocha-ctrf-json-reporter --reporter-options output=ctrf/integration-results.json
+        run: pnpm run test:integration -- --reporter mocha-ctrf-json-reporter --reporter-options "outputFile=integration-results.json"
         timeout-minutes: 15
         env:
           PULUMI_STACK_NAME: pr-${{ github.event.number }}
@@ -286,7 +286,7 @@ jobs:
           environment: ${{ env.PULUMI_ORGANIZATION }}/aws-rag-pipeline/staging
 
       - name: Run E2E tests against staging
-        run: esc run aws-rag-pipeline/staging -i pnpm run test:e2e -- --reporter mocha-ctrf-json-reporter --reporter-options output=ctrf/e2e-results.json
+        run: esc run aws-rag-pipeline/staging -i pnpm run test:e2e -- --reporter mocha-ctrf-json-reporter --reporter-options "outputFile=e2e-results.json"
         timeout-minutes: 20
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
