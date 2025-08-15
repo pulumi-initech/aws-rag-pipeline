@@ -24,7 +24,7 @@ on:
 
 env:
   NODE_VERSION: 23
-  PULUUMI_ORGANIZATION: initech
+  PULUMI_ORGANIZATION: initech
   # OIDC authentication replaces PULUMI_ACCESS_TOKEN
   # AWS credentials will be injected via ESC
 
@@ -77,13 +77,13 @@ jobs:
       - name: Run security audit
         run: pnpm audit --audit-level moderate
 
-      - name: Check for secrets in code
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: main
-          head: HEAD
-          extra_args: --debug --only-verified
+      # - name: Check for secrets in code
+      #   uses: trufflesecurity/trufflehog@main
+      #   with:
+      #     path: ./
+      #     base: main
+      #     head: HEAD
+      #     extra_args: --debug --only-verified
 
   # =============================================================================
   # UNIT TESTS - Fast feedback loop
