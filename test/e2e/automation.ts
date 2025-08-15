@@ -8,7 +8,7 @@ const workDir = path.join(__dirname, "../..");
 
 export async function select() {
     // Select existing stack
-    const stack = await LocalWorkspace.createOrSelectStack({
+    const stack = await LocalWorkspace.selectStack({
         stackName,
         workDir,
     });

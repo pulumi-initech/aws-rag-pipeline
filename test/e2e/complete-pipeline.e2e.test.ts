@@ -10,14 +10,22 @@ describe("Complete RAG Pipeline E2E Tests", function() {
     let awsHelper: AWSHelper;
 
     before(async function() {
-        console.log("Deploying complete RAG pipeline infrastructure...");
         const stack = await select();
         outputs = await stack.outputs();
 
         // Initialize AWS helper with correct region
         awsHelper = new AWSHelper({ region: "us-east-1" });
 
-        console.log(`Found stack ${stack.name}, with outputs:\n`, outputs);
+        console.log(`Found stack ${stack.name}, with outputs:\n`, JSON.stringify(outputs, null, 2));
+        
+    });
+
+    after(async function() {
+        if (awsHelper) {
+            console.log("Cleaning up AWS helper resources...");
+            await awsHelper.cleanup();
+            console.log("AWS helper cleanup completed");
+        }
     });
 
     describe("Complete Document-to-Query Pipeline", () => {
@@ -28,21 +36,34 @@ describe("Complete RAG Pipeline E2E Tests", function() {
         const logMessages: string[] = [];
         let apiEndpoint: string;
         before(async function() {
+            // Extract output values with proper error handling
+            try {
+                bucketName = outputs.inputBucketName?.value;
+                apiEndpoint = outputs.queryApiEndpoint?.value; 
+                indexName = outputs.indexName?.value;
 
-            bucketName = outputs.inputBucketName.value;
-            apiEndpoint = outputs.queryApiEndpoint.value;
-            indexName = outputs.indexName.value;
+                if (!bucketName || !apiEndpoint || !indexName) {
+                    throw new Error(`Missing required output values: bucketName=${bucketName}, apiEndpoint=${apiEndpoint}, indexName=${indexName}`);
+                }
 
-            const indicies = await awsHelper.listOpenSearchIndices(apiEndpoint);
-            for (const index of indicies) {
-                console.log(`Found OpenSearch index: ${index}`);
+                console.log(`Using bucketName: ${bucketName}`);
+                console.log(`Using apiEndpoint: ${apiEndpoint}`);
+                console.log(`Using indexName: ${indexName}`);
+
+                const indices = await awsHelper.listOpenSearchIndices(apiEndpoint);
+                for (const index of indices) {
+                    console.log(`Found OpenSearch index: ${index}`);
+                }
+                
+                await awsHelper.clearOpenSearchIndex(
+                    apiEndpoint,
+                    indexName
+                );
+                console.log("Cleared OpenSearch index for clean test environment");
+            } catch (error) {
+                console.error("Error in test setup:", error);
+                throw error;
             }
-            
-            awsHelper.clearOpenSearchIndex(
-                apiEndpoint,
-                indexName
-            );
-            console.log("Cleared OpenSearch index for clean test environment");
 
             documentFileName = TestUtils.generateTestFileName("healthcare-ai-document");
             
@@ -96,14 +117,20 @@ Keywords: artificial intelligence, healthcare, machine learning, medical AI, dia
 
             console.log(`Uploading document: ${documentFileName}`);
             
-            // Upload the test document using AWSHelper
-            await awsHelper.putS3Object(bucketName, documentFileName, testDocument, "text/plain");
-            console.log("Document uploaded successfully");
+            try {
+                // Upload the test document using AWSHelper
+                await awsHelper.putS3Object(bucketName, documentFileName, testDocument, "text/plain");
+                console.log("Document uploaded successfully");
 
-            console.log("Waiting for ingestion Lambda to process the document...");
-            
-            // Wait for document processing using TestUtils
-            await TestUtils.waitForProcessing('long');
+                console.log("Waiting for ingestion Lambda to process the document...");
+                
+                // Wait for document processing using TestUtils
+                await TestUtils.waitForProcessing('medium');
+                console.log("Processing wait completed");
+            } catch (error) {
+                console.error("Error during document upload or processing:", error);
+                throw error;
+            }
 
         });
         
@@ -240,26 +267,38 @@ Keywords: artificial intelligence, healthcare, machine learning, medical AI, dia
     });
 
     describe("Multiple Document Handling", () => {
-        const _bucketName: string = outputs.inputBucketName.value;
-        const _documentFileName: string = TestUtils.generateTestFileName("multi-doc");
-        const _indexName: string = outputs.indexName.value;
-        const _logMessages: string[] = [];
-        const _apiEndpoint: string = outputs.queryApiEndpoint.value;
+        let multiBucketName: string;
+        let multiApiEndpoint: string;
+        let multiIndexName: string;
 
         before(async function() {
+            // Extract output values with proper error handling
+            try {
+                multiBucketName = outputs.inputBucketName?.value;
+                multiApiEndpoint = outputs.queryApiEndpoint?.value; 
+                multiIndexName = outputs.indexName?.value;
 
-            awsHelper.clearOpenSearchIndex(
-                outputs.queryApiEndpoint.value,
-                outputs.indexName.value,
-            );
-            console.log("Cleared OpenSearch index for clean test environment");
-        
+                if (!multiBucketName || !multiApiEndpoint || !multiIndexName) {
+                    throw new Error(`Missing required output values for multi-doc test: bucketName=${multiBucketName}, apiEndpoint=${multiApiEndpoint}, indexName=${multiIndexName}`);
+                }
+
+                console.log("Setting up multiple document test environment");
+                await awsHelper.clearOpenSearchIndex(
+                    multiApiEndpoint,
+                    multiIndexName
+                );
+                console.log("Cleared OpenSearch index for clean test environment");
+            } catch (error) {
+                console.error("Error in multi-doc test setup:", error);
+                throw error;
+            }
         });
         it("should handle multiple documents and maintain query context", async function() {
             this.timeout(480000); // 8 minutes
 
-            const bucketName = outputs.inputBucketName.value;
-            const apiEndpoint = outputs.queryApiEndpoint.value;
+            // Use the properly scoped variables from the before block
+            const bucketName = multiBucketName;
+            const apiEndpoint = multiApiEndpoint;
 
             // Create multiple unrelated documents using TestUtils
             const documents = [
@@ -317,13 +356,19 @@ Private space companies invested $14.5 billion in exploration.`
 
             console.log(`\n=== Uploading Multiple Documents ===`);
             
-            // Upload all documents using TestUtils
-            await TestUtils.uploadDocuments(awsHelper, bucketName, documents);
-            console.log(`Uploaded ${documents.length} documents successfully`);
+            try {
+                // Upload all documents using TestUtils
+                await TestUtils.uploadDocuments(awsHelper, bucketName, documents);
+                console.log(`Uploaded ${documents.length} documents successfully`);
 
-            // Wait for processing
-            console.log("\nWaiting for multi-document processing...");
-            await TestUtils.waitForProcessing('medium');
+                // Wait for processing
+                console.log("\nWaiting for multi-document processing...");
+                await TestUtils.waitForProcessing('medium');
+                console.log("Multi-document processing wait completed");
+            } catch (error) {
+                console.error("Error during multi-document upload or processing:", error);
+                throw error;
+            }
 
             console.log(`\n=== Testing Cross-Document Queries ===`);
             

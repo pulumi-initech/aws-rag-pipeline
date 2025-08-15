@@ -44,4 +44,4 @@ export const ingestionLambdaArn = ingestion.lambdaArn;
 export const queryLambdaArn = query.lambdaArn;
 export const queryApiName = query.apiName;
 export const queryApiEndpoint = query.apiEndpoint;
-export const indexName = vectorStore.config.collectionName || vectorStore.config.indexName;
+export const indexName = vectorStore.config.indexName;
