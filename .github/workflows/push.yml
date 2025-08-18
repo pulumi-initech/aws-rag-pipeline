@@ -65,7 +65,7 @@ jobs:
           requested-token-type: urn:pulumi:token-type:access_token:organization
 
       - name: Deploy to staging
-        uses: pulumi/actions@v5
+        uses: pulumi/actions@v6
         with:
           command: up
           stack-name: staging
@@ -170,7 +170,7 @@ jobs:
           requested-token-type: urn:pulumi:token-type:access_token:organization
 
       - name: Deploy to production
-        uses: pulumi/actions@v5
+        uses: pulumi/actions@v6
         with:
           command: up
           stack-name: production
@@ -209,7 +209,7 @@ jobs:
           requested-token-type: urn:pulumi:token-type:access_token:organization
 
       - name: Deploy to ${{ github.event.inputs.environment }}
-        uses: pulumi/actions@v5
+        uses: pulumi/actions@v6
         with:
           command: up
           stack-name: ${{ github.event.inputs.environment }}
