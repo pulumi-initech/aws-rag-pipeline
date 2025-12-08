@@ -1,0 +1,51 @@
+  
+on:  
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+  manual_deployment:
+    name: Manual Deployment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version:  ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Authenticate with Pulumi
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: ${{ env.PULUMI_ORGANIZATION }}
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+
+      - name: Deploy to ${{ github.event.inputs.environment }}
+        uses: pulumi/actions@v5
+        with:
+          command: up
+          stack-name: ${{ github.event.inputs.environment }}
