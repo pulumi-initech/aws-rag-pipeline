@@ -33,8 +33,9 @@ const query = new Query("query", {
 
 // Create ServerlessAccessPolicy if using OpenSearch
 if (vectorStoreType === "opensearch") {
+    const collectionName = vectorStore.config.collectionName || config.require("collectionName");
     new ServerlessAccessPolicy("opensearch-access", {
-        collectionName: vectorStore.config.collectionName || "rag-collection",
+        collectionName: collectionName,
         lambdaRoleArns: [ingestion.role.arn, query.role.arn]
     }, { dependsOn: [vectorStore, ingestion, query] });
 }

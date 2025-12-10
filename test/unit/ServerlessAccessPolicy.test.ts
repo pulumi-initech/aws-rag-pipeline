@@ -100,69 +100,72 @@ describe("ServerlessAccessPolicy Component", () => {
             expect(policyResource!.inputs.policy).to.not.be.undefined;
         });
 
-        it("should include collection resource permissions", async () => {
+        it("should include collection resource permissions", () => {
             const policyResource = createdResources.find(r => 
                 r.type === "aws:opensearch/serverlessAccessPolicy:ServerlessAccessPolicy"
             );
             
             // The policy is a pulumi.Output, so we need to resolve it
-            const policyStr = await pulumi.output(policyResource!.inputs.policy).promise();
-            const policyDoc = JSON.parse(policyStr);
-            
-            expect(policyDoc).to.be.an("array");
-            expect(policyDoc).to.have.lengthOf(1);
-            
-            const rules = policyDoc[0].Rules;
-            const collectionRule = rules.find((r: any) => r.ResourceType === "collection");
-            
-            expect(collectionRule).to.not.be.undefined;
-            expect(collectionRule.Resource).to.include("collection/test-collection");
-            expect(collectionRule.Permission).to.include("aoss:CreateCollectionItems");
-            expect(collectionRule.Permission).to.include("aoss:UpdateCollectionItems");
-            expect(collectionRule.Permission).to.include("aoss:DescribeCollectionItems");
-            expect(collectionRule.Permission).to.include("aoss:DeleteCollectionItems");
+            return pulumi.output(policyResource!.inputs.policy).apply(policyStr => {
+                const policyDoc = JSON.parse(policyStr);
+                
+                expect(policyDoc).to.be.an("array");
+                expect(policyDoc).to.have.lengthOf(1);
+                
+                const rules = policyDoc[0].Rules;
+                const collectionRule = rules.find((r: any) => r.ResourceType === "collection");
+                
+                expect(collectionRule).to.not.be.undefined;
+                expect(collectionRule.Resource).to.include("collection/test-collection");
+                expect(collectionRule.Permission).to.include("aoss:CreateCollectionItems");
+                expect(collectionRule.Permission).to.include("aoss:UpdateCollectionItems");
+                expect(collectionRule.Permission).to.include("aoss:DescribeCollectionItems");
+                expect(collectionRule.Permission).to.include("aoss:DeleteCollectionItems");
+            });
         });
 
-        it("should include index resource permissions", async () => {
+        it("should include index resource permissions", () => {
             const policyResource = createdResources.find(r => 
                 r.type === "aws:opensearch/serverlessAccessPolicy:ServerlessAccessPolicy"
             );
             
-            const policyStr = await pulumi.output(policyResource!.inputs.policy).promise();
-            const policyDoc = JSON.parse(policyStr);
-            
-            const rules = policyDoc[0].Rules;
-            const indexRule = rules.find((r: any) => r.ResourceType === "index");
-            
-            expect(indexRule).to.not.be.undefined;
-            expect(indexRule.Resource).to.include("index/test-collection/*");
-            expect(indexRule.Permission).to.include("aoss:CreateIndex");
-            expect(indexRule.Permission).to.include("aoss:UpdateIndex");
-            expect(indexRule.Permission).to.include("aoss:DescribeIndex");
-            expect(indexRule.Permission).to.include("aoss:DeleteIndex");
-            expect(indexRule.Permission).to.include("aoss:ReadDocument");
-            expect(indexRule.Permission).to.include("aoss:WriteDocument");
+            return pulumi.output(policyResource!.inputs.policy).apply(policyStr => {
+                const policyDoc = JSON.parse(policyStr);
+                
+                const rules = policyDoc[0].Rules;
+                const indexRule = rules.find((r: any) => r.ResourceType === "index");
+                
+                expect(indexRule).to.not.be.undefined;
+                expect(indexRule.Resource).to.include("index/test-collection/*");
+                expect(indexRule.Permission).to.include("aoss:CreateIndex");
+                expect(indexRule.Permission).to.include("aoss:UpdateIndex");
+                expect(indexRule.Permission).to.include("aoss:DescribeIndex");
+                expect(indexRule.Permission).to.include("aoss:DeleteIndex");
+                expect(indexRule.Permission).to.include("aoss:ReadDocument");
+                expect(indexRule.Permission).to.include("aoss:WriteDocument");
+            });
         });
 
-        it("should include all Lambda role ARNs as principals", async () => {
+        it("should include all Lambda role ARNs as principals", () => {
             const policyResource = createdResources.find(r => 
                 r.type === "aws:opensearch/serverlessAccessPolicy:ServerlessAccessPolicy"
             );
             
-            const policyStr = await pulumi.output(policyResource!.inputs.policy).promise();
-            const policyDoc = JSON.parse(policyStr);
-            
-            const principals = policyDoc[0].Principal;
-            
-            expect(principals).to.be.an("array");
-            expect(principals).to.have.lengthOf(2);
-            expect(principals).to.include("arn:aws:iam::123456789012:role/ingestion-lambda-role");
-            expect(principals).to.include("arn:aws:iam::123456789012:role/query-lambda-role");
+            return pulumi.output(policyResource!.inputs.policy).apply(policyStr => {
+                const policyDoc = JSON.parse(policyStr);
+                
+                const principals = policyDoc[0].Principal;
+                
+                expect(principals).to.be.an("array");
+                expect(principals).to.have.lengthOf(2);
+                expect(principals).to.include("arn:aws:iam::123456789012:role/ingestion-lambda-role");
+                expect(principals).to.include("arn:aws:iam::123456789012:role/query-lambda-role");
+            });
         });
     });
 
     describe("Single Lambda Role", () => {
-        it("should handle single Lambda role ARN", async () => {
+        it("should handle single Lambda role ARN", () => {
             createdResources.length = 0;
             
             new ServerlessAccessPolicy("single-role-policy", {
@@ -174,19 +177,20 @@ describe("ServerlessAccessPolicy Component", () => {
                 r.type === "aws:opensearch/serverlessAccessPolicy:ServerlessAccessPolicy"
             );
             
-            const policyStr = await pulumi.output(policyResource!.inputs.policy).promise();
-            const policyDoc = JSON.parse(policyStr);
-            
-            const principals = policyDoc[0].Principal;
-            
-            expect(principals).to.be.an("array");
-            expect(principals).to.have.lengthOf(1);
-            expect(principals[0]).to.equal("arn:aws:iam::123456789012:role/single-lambda-role");
+            return pulumi.output(policyResource!.inputs.policy).apply(policyStr => {
+                const policyDoc = JSON.parse(policyStr);
+                
+                const principals = policyDoc[0].Principal;
+                
+                expect(principals).to.be.an("array");
+                expect(principals).to.have.lengthOf(1);
+                expect(principals[0]).to.equal("arn:aws:iam::123456789012:role/single-lambda-role");
+            });
         });
     });
 
     describe("Multiple Lambda Roles", () => {
-        it("should handle multiple Lambda role ARNs", async () => {
+        it("should handle multiple Lambda role ARNs", () => {
             createdResources.length = 0;
             
             const multipleRoles = [
@@ -204,14 +208,15 @@ describe("ServerlessAccessPolicy Component", () => {
                 r.type === "aws:opensearch/serverlessAccessPolicy:ServerlessAccessPolicy"
             );
             
-            const policyStr = await pulumi.output(policyResource!.inputs.policy).promise();
-            const policyDoc = JSON.parse(policyStr);
-            
-            const principals = policyDoc[0].Principal;
-            
-            expect(principals).to.be.an("array");
-            expect(principals).to.have.lengthOf(3);
-            expect(principals).to.include.members(multipleRoles);
+            return pulumi.output(policyResource!.inputs.policy).apply(policyStr => {
+                const policyDoc = JSON.parse(policyStr);
+                
+                const principals = policyDoc[0].Principal;
+                
+                expect(principals).to.be.an("array");
+                expect(principals).to.have.lengthOf(3);
+                expect(principals).to.include.members(multipleRoles);
+            });
         });
     });
 
@@ -228,7 +233,7 @@ describe("ServerlessAccessPolicy Component", () => {
             });
         });
 
-        it("should use collection name in resource patterns", async () => {
+        it("should use collection name in resource patterns", () => {
             createdResources.length = 0;
             
             new ServerlessAccessPolicy("test-policy", {
@@ -240,15 +245,16 @@ describe("ServerlessAccessPolicy Component", () => {
                 r.type === "aws:opensearch/serverlessAccessPolicy:ServerlessAccessPolicy"
             );
             
-            const policyStr = await pulumi.output(policyResource!.inputs.policy).promise();
-            const policyDoc = JSON.parse(policyStr);
-            
-            const rules = policyDoc[0].Rules;
-            const collectionRule = rules.find((r: any) => r.ResourceType === "collection");
-            const indexRule = rules.find((r: any) => r.ResourceType === "index");
-            
-            expect(collectionRule.Resource[0]).to.equal("collection/custom-collection");
-            expect(indexRule.Resource[0]).to.equal("index/custom-collection/*");
+            return pulumi.output(policyResource!.inputs.policy).apply(policyStr => {
+                const policyDoc = JSON.parse(policyStr);
+                
+                const rules = policyDoc[0].Rules;
+                const collectionRule = rules.find((r: any) => r.ResourceType === "collection");
+                const indexRule = rules.find((r: any) => r.ResourceType === "index");
+                
+                expect(collectionRule.Resource[0]).to.equal("collection/custom-collection");
+                expect(indexRule.Resource[0]).to.equal("index/custom-collection/*");
+            });
         });
     });
 
@@ -273,7 +279,7 @@ describe("ServerlessAccessPolicy Component", () => {
     });
 
     describe("Permission Completeness", () => {
-        it("should include all required collection permissions", async () => {
+        it("should include all required collection permissions", () => {
             createdResources.length = 0;
             
             new ServerlessAccessPolicy("test-policy", {
@@ -285,25 +291,26 @@ describe("ServerlessAccessPolicy Component", () => {
                 r.type === "aws:opensearch/serverlessAccessPolicy:ServerlessAccessPolicy"
             );
             
-            const policyStr = await pulumi.output(policyResource!.inputs.policy).promise();
-            const policyDoc = JSON.parse(policyStr);
-            
-            const rules = policyDoc[0].Rules;
-            const collectionRule = rules.find((r: any) => r.ResourceType === "collection");
-            
-            const requiredPermissions = [
-                "aoss:CreateCollectionItems",
-                "aoss:UpdateCollectionItems",
-                "aoss:DescribeCollectionItems",
-                "aoss:DeleteCollectionItems"
-            ];
-            
-            requiredPermissions.forEach(permission => {
-                expect(collectionRule.Permission).to.include(permission);
+            return pulumi.output(policyResource!.inputs.policy).apply(policyStr => {
+                const policyDoc = JSON.parse(policyStr);
+                
+                const rules = policyDoc[0].Rules;
+                const collectionRule = rules.find((r: any) => r.ResourceType === "collection");
+                
+                const requiredPermissions = [
+                    "aoss:CreateCollectionItems",
+                    "aoss:UpdateCollectionItems",
+                    "aoss:DescribeCollectionItems",
+                    "aoss:DeleteCollectionItems"
+                ];
+                
+                requiredPermissions.forEach(permission => {
+                    expect(collectionRule.Permission).to.include(permission);
+                });
             });
         });
 
-        it("should include all required index permissions", async () => {
+        it("should include all required index permissions", () => {
             createdResources.length = 0;
             
             new ServerlessAccessPolicy("test-policy", {
@@ -315,23 +322,24 @@ describe("ServerlessAccessPolicy Component", () => {
                 r.type === "aws:opensearch/serverlessAccessPolicy:ServerlessAccessPolicy"
             );
             
-            const policyStr = await pulumi.output(policyResource!.inputs.policy).promise();
-            const policyDoc = JSON.parse(policyStr);
-            
-            const rules = policyDoc[0].Rules;
-            const indexRule = rules.find((r: any) => r.ResourceType === "index");
-            
-            const requiredPermissions = [
-                "aoss:CreateIndex",
-                "aoss:UpdateIndex",
-                "aoss:DescribeIndex",
-                "aoss:DeleteIndex",
-                "aoss:ReadDocument",
-                "aoss:WriteDocument"
-            ];
-            
-            requiredPermissions.forEach(permission => {
-                expect(indexRule.Permission).to.include(permission);
+            return pulumi.output(policyResource!.inputs.policy).apply(policyStr => {
+                const policyDoc = JSON.parse(policyStr);
+                
+                const rules = policyDoc[0].Rules;
+                const indexRule = rules.find((r: any) => r.ResourceType === "index");
+                
+                const requiredPermissions = [
+                    "aoss:CreateIndex",
+                    "aoss:UpdateIndex",
+                    "aoss:DescribeIndex",
+                    "aoss:DeleteIndex",
+                    "aoss:ReadDocument",
+                    "aoss:WriteDocument"
+                ];
+                
+                requiredPermissions.forEach(permission => {
+                    expect(indexRule.Permission).to.include(permission);
+                });
             });
         });
     });
