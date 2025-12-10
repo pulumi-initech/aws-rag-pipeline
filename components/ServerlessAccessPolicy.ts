@@ -13,7 +13,7 @@ export class ServerlessAccessPolicy extends pulumi.ComponentResource {
         super("rag:ServerlessAccessPolicy", name, {}, opts);
 
         this.policy = new aws.opensearch.ServerlessAccessPolicy(`${name}-dap`, {
-            name: `${args.collectionName}-dap`,
+            name: pulumi.interpolate`${args.collectionName}-dap`,
             type: "data",
             policy: pulumi.interpolate`[{
                 "Rules": [{
